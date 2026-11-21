@@ -1,0 +1,13 @@
+mood_key,label,when_to_use,fallback
+comfort_when_low,Comfort when feeling low,"Sad, tired of the day, wants warmth and reassurance rather than more heaviness",calm_anxious;devotional_reflective
+sit_with_sadness,Sit with the sadness,"Grieving, heartbroken or wants a cathartic cry; music that meets the feeling rather than fixing it",romantic_nostalgic;devotional_reflective
+calm_anxious,Calm an anxious mind,"Stressed, restless, overthinking; wants to slow down",wind_down_sleep;comfort_when_low
+wind_down_sleep,Wind down / sleep,"Late night, can't sleep, wants something soothing",calm_anxious;devotional_reflective
+joyful_celebrate,Joyful / celebrate,"Good news, happy day, festive mood",light_playful;grand_uplifted
+energise_motivate,Energise / get going,"Needs a cheerful push, workout, start of a big task",grand_uplifted;joyful_celebrate
+intense_dramatic,Intense / dramatic,Wants something powerful and stirring that matches strong emotion,grand_uplifted;sit_with_sadness
+devotional_reflective,Devotional / reflective,"Prayerful, introspective, wants depth and stillness",calm_anxious;comfort_when_low
+romantic_nostalgic,Romantic / nostalgic,"Missing someone, tender, wistful",light_playful;sit_with_sadness
+grand_uplifted,Grand / uplifted,"Wants something majestic and expansive, feeling inspired",energise_motivate;joyful_celebrate
+fresh_morning,Fresh morning start,"Morning, new beginning, bright and clear",devotional_reflective;energise_motivate
+light_playful,Light / playful,"Relaxed, casual, wants something easy and charming",joyful_celebrate;romantic_nostalgic
