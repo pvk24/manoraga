@@ -45,6 +45,9 @@ python cli.py --user yourname
 - "I'm a beginner and prefer Tamil songs." then "Thodi is too heavy for me."
 
 ## How it works
+The rules the agent follows (scope, grounding, recommendations, corrections, data policy) are written up in
+[docs/agent-behaviour-rules.md](docs/agent-behaviour-rules.md).
+
 The LLM interprets (your mood, your question, your level) and decides which tool to call. Tools are deterministic:
 they look up the curated catalogue in `data/` and rank by your taste profile. Facts come from the data, not
 from the model's memory. See `CLAUDE.md` for architecture and conventions.

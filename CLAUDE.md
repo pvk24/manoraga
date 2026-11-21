@@ -28,6 +28,8 @@ Out of scope for v1: audio raaga identification (planned v2 as a separate servic
 - `evals/` — 40 live evals: tool, keyword, citation, saved-profile and LLM-rubric checks (multi-turn supported). `tests/` — offline unit tests.
 
 ## Rules
+- `docs/agent-behaviour-rules.md` is the readable record of the owner's rules. Any change to a rule updates it in the
+  same commit as the prompts, code, tests and evals.
 - Catalogue changes (owner's rule): the agent only proposes. Corrections apply to that user at once and are queued;
   additions need trusted source URLs + quoted evidence and are queued. Approval is a curator action outside the model
   (`cli.py --curator` /approve, or `python -m carnatic.review`). Never give the agent an approve tool.
