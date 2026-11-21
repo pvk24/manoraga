@@ -11,7 +11,8 @@ Out of scope for v1: audio raaga identification (planned v2 as a separate servic
 ## Architecture
 - `data/*.csv` — curated knowledge base. **The source of truth for facts.** `verified=true` means the project
   owner (10 years of Carnatic training) reviewed the row: for raagas that covers scale, parent and foreign notes;
-  mood tags are a separate judgement. Never flip `verified` yourself.
+  mood tags are a separate judgement. Never flip `verified` yourself; the owner's Accept in the page's Review panel marks
+  a new row verified (page_import approve(verified=True), page applyChange); other approvals leave it false.
 - Raaga `moods` are ordered (primary first) and are the single source of mood membership. `avoid_moods` is a hard
   exclusion; `Catalog.validate` rejects a raaga that is both tagged and avoided for the same mood.
 - Every row has `sources` (semicolon-separated URLs). Reference sources, in order of trust for facts: Karnatik.com

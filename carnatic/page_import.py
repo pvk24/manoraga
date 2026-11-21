@@ -66,7 +66,7 @@ def import_export(store: ProposalStore, data: dict) -> list[dict]:
             report.append({**row, "result": "not imported: " + res["error"]}); continue
         pid = res["proposal_id"]
         if it.get("status") in ("accepted", "applied"):
-            ap = store.approve(pid, ("added to the page's catalogue" if it.get("status") == "applied" else "accepted in the chat page") + (f": {it.get('curator_note')}" if it.get("curator_note") else ""))
+            ap = store.approve(pid, ("added to the page's catalogue" if it.get("status") == "applied" else "accepted in the chat page") + (f": {it.get('curator_note')}" if it.get("curator_note") else ""), verified=True)
             report.append({**row, "proposal_id": pid,
                            "result": "approved, catalogue updated" if ap.get("ok") else "queued; approval failed: " + ap["error"]})
         else:

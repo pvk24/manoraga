@@ -330,13 +330,15 @@ class ProposalStore:
         self._decide(pid, "rejected", note)
         return {"ok": True, "proposal_id": pid, "status": "rejected"}
 
-    def approve(self, pid: int, note: str = "") -> dict:
+    def approve(self, pid: int, note: str = "", verified: bool = False) -> dict:
+        """Apply a pending proposal. verified=True when the owner accepted it in the page's Review panel
+        (owner's rule, 21 Nov 2026): a new row is then marked verified."""
         p = self.get(pid)
         if not p or p["status"] != "pending":
             return {"error": f"proposal {pid} is not pending"}
         backup = {f: (self.data_dir / f).read_text(encoding="utf-8") for f in ("raagas.csv", "krithis.csv")}
         try:
-            self._apply(p)
+            self._apply(p, verified)
             Catalog.load(self.data_dir)          # full validation; raises on any inconsistency
         except Exception as e:  # noqa: BLE001 - roll back on anything
             for f, text in backup.items():
@@ -364,7 +366,7 @@ class ProposalStore:
             w.writerows(rows)
         shutil.move(tmp, path)
 
-    def _apply(self, p: dict):
+    def _apply(self, p: dict, verified: bool = False):
         today = dt.date.today().isoformat()
         pay = p["payload"]
         stamp = f"Added via ManoRaga proposal #{p['id']} on {today} (sources checked by the agent; approved by curator)"
@@ -390,7 +392,7 @@ class ProposalStore:
             row["notes"] = "; ".join(x for x in (row.get("notes", ""), mood_note, edit_note, stamp) if x)
             for u in {e["source"] for e in mev if e.get("source") not in ("user", "curator")} - set(pay["sources"]):
                 row["sources"] += ";" + u
-            row["verified"] = "false"           # owner can flip it after their own review
+            row["verified"] = "true" if verified else "false"   # true only when the owner accepted it
             if p["kind"] == "add_krithi":
                 row["form"] = row.get("form") or "krithi"
             rows.append(row)

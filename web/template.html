@@ -246,12 +246,12 @@ function applyChange(it, when) {
     const sources = [...it.sources, ...mev.map(e => e.source).filter(u => trustedUrl(u) && !it.sources.includes(u))];
     if (it.kind !== 'raaga') {
       CAT.krithis.push({title: rec.title.trim(), raaga: CAT.raagas.find(r => lc(r.name) === lc(rec.raaga)).name, composer: rec.composer || '', language: rec.language || '', tala: rec.tala || '',
-        form: rec.form || 'krithi', moods: [...(rec.moods || [])], avoid_moods: [], descriptors: rec.descriptors || '', notes, sources, verified: false});
+        form: rec.form || 'krithi', moods: [...(rec.moods || [])], avoid_moods: [], descriptors: rec.descriptors || '', notes, sources, verified: true});   // the owner accepted it: verified
     } else {
       const split = v => Array.isArray(v) ? v : String(v || '').split(';').map(x => x.trim()).filter(Boolean);
       CAT.raagas.push({name: rec.name.trim(), aliases: split(rec.aliases), type: rec.type, melakarta_number: rec.melakarta_number ? Number(rec.melakarta_number) : null, parent: rec.parent || '',
         alternate_parents: [], arohana: rec.arohana, avarohana: rec.avarohana, scale_note: rec.scale_note || '', foreign_notes: split(rec.foreign_notes), moods: [...(rec.moods || [])], avoid_moods: [],
-        rasa: split(rec.rasa), time_of_day: '', notes, sources, verified: false});
+        rasa: split(rec.rasa), time_of_day: '', notes, sources, verified: true});
       reindex();
     }
     return;

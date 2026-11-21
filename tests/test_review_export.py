@@ -98,6 +98,7 @@ def test_page_catalogue_changes_match_python_approval(tmp_path):
         py = next(k for k in cat.krithis if k.title == title)
         js = next(k for k in out["krithis"] if k["title"] == title)
         assert {f: getattr(py, f) for f in fields} == {f: js[f] for f in fields}, title
+        assert py.verified is True, f"{title}: the owner accepted it, so it is verified"
 
 
 V = "https://www.shivkumar.org/music/varnams/Ninnukori-Vasantha-Varnam.htm"
@@ -179,3 +180,17 @@ def test_curator_agent_finds_are_confirmed_by_accepting():
     assert import_export(store2, {"format": "manoraga-suggestions/1", "items": [accepted]})[0]["result"].startswith("approved")
     k = next(k for k in Catalog.load(d2 / "data").krithis if k.title == "Zz Lullaby")
     assert "found by the curator agent, confirmed by the curator" in k.notes and k.moods == ["wind_down_sleep"]
+
+
+def test_only_the_owners_accept_marks_a_row_verified(tmp_path):
+    """Owner's rule (21 Nov 2026): Accept in the Review panel marks a new row verified; any other approval doesn't."""
+    shutil.copytree(DATA_DIR, tmp_path / "data")
+    store = ProposalStore(tmp_path / "p.db", tmp_path / "data")
+    src = "https://www.karnatik.com/c9999.shtml"
+    for title, verified in (("Zz Plain Approve", False), ("Zz Owner Accept", True)):
+        r = store.propose_addition("u", Catalog.load(tmp_path / "data"), "krithi",
+                                   {"title": title, "raaga": "Mohanam", "composer": "X", "language": "Tamil"}, [src],
+                                   "raagam: mOhanam Composer: X Language: Tamil")
+        assert store.approve(r["proposal_id"], verified=verified)["ok"]
+    got = {k.title: k.verified for k in Catalog.load(tmp_path / "data").krithis if k.title.startswith("Zz")}
+    assert got == {"Zz Plain Approve": False, "Zz Owner Accept": True}
