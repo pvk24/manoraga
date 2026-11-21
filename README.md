@@ -12,7 +12,7 @@ cp .env.example .env            # add your ANTHROPIC_API_KEY
 pytest -q                       # offline tests, no key needed
 python seed_profile.py --user pranav   # preload your favourite krithis as likes
 python cli.py --user pranav --debug
-python -m evals.run_evals       # 40 live evals (uses API credits); results saved to evals/results/
+python -m evals.run_evals       # 41 live evals (uses API credits); results saved to evals/results/
 python -m evals.run_evals --only ground   # just one category
 ```
 

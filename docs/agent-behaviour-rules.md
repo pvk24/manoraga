@@ -41,7 +41,7 @@ This file is the main, readable copy of the rules. When a rule changes, update i
 ## 4. Corrections and new songs: the agent proposes, the curator approves
 - "That's not upbeat, it's soothing" is a correction about the song, not a dislike. It applies to that user's own suggestions immediately (shown in their taste panel, removable) and is queued for the curator.
 - Factual corrections (raaga, composer, language, tala, scale) need a trusted source URL and are only queued.
-- New songs or raagas: the agent searches the trusted sources and presents a song only when a trusted page confirms its facts, labelled "from <site>, not yet in my catalogue".
+- Answer first (owner's rule, 21 Nov 2026): when a song or raaga isn't in the catalogue, or a question needs facts the catalogue lacks, the agent searches the trusted sources and gives the answer first, with each source linked. Only at the end does it say, in one line, that it isn't in the catalogue yet, and ask whether the user would like to suggest adding it (for a song, with its suggested moods to confirm in the same question). It presents a song only when a trusted page confirms its facts. Mood requests with no fitting catalogue song still say so first (closest-mood fallback).
 - Completeness (owner's rule, 21 Nov 2026): the agent fills every field of a new song itself (raaga, composer, language, tala, form, and the meaning for the mood), searching the trusted sources for anything missing before it shows the suggestion, without being asked. It asks the user only about a field those sources don't state, and says it is unstated there. The page's `suggest_addition` reports missing fields to prompt this.
 - Mood of a new song (owner's rule, 21 Nov 2026): the trusted pages give the song's meaning and other details (deity, theme, rasa, when it is sung). The agent infers 1–2 moods from those, suggests them as its suggestion with the line they rest on, and the user validates (confirm or change). It bases the mood on the song, not only its raaga, and says so when only raaga-level details exist.
 - The agent shows the complete facts and suggested moods and asks once before proposing. Only moods the user confirmed are sent.
@@ -55,7 +55,7 @@ This file is the main, readable copy of the rules. When a rule changes, update i
   - Edits are logged. A mood the curator sets is recorded as "curator". Moods keep their primary-first order.
 - Approval writes `data/*.csv`, re-validates the whole catalogue, and rolls back on any inconsistency. New rows carry `verified=true` when the owner accepted them in the page's Review panel (owner's rule, 21 Nov 2026: Accept means reviewed), otherwise `verified=false`, their sources, where each mood came from, any curator edits, and a note naming the proposal.
 - Friends' copies: each owner reviews their own box; to reach the shared catalogue they attach their export to a GitHub issue.
-- Evals: corr-01, corr-02, disc-01, disc-02, disc-04 (inferred mood, user validates), disc-05 (completes missing facts unasked), disc-06 (an update keeps the same proposal). Offline: tests/test_curator.py (gaps, checks, limits, and the same twin rule as the page).
+- Evals: corr-01, corr-02, disc-01, disc-02, disc-04 (inferred mood, user validates), disc-05 (completes missing facts unasked), disc-06 (an update keeps the same proposal), disc-07 (answer first, catalogue note and offer at the end). Offline: tests/test_curator.py (gaps, checks, limits, and the same twin rule as the page).
 
 ## 5. Data policy
 - `verified=true` means the owner (10 years of Carnatic training) reviewed the row. The agent never flips it.
@@ -79,6 +79,6 @@ This file is the main, readable copy of the rules. When a rule changes, update i
   - a parity test: 225 identical tool calls through the Python and web versions must match exactly (the page's web-search and review code is page-only and sits outside the parity core);
   - contract tests that run the page's review export through the Python importer, check "Add to catalogue" gives the same rows as Python approval, and replay a real duplicate sequence through both merge implementations;
   - checks that the committed `web/index.html` and the setup instructions are current.
-- `python -m evals.run_evals` (40 live evals) after any prompt or tool change. Compare per-category pass rates with the previous run in `evals/results/`.
+- `python -m evals.run_evals` (41 live evals) after any prompt or tool change. Compare per-category pass rates with the previous run in `evals/results/`.
 - Manual test plan: the "ManoRaga manual test plan" sheet (41 tests, page version).
 - Never weaken an eval to make it pass; fix the agent or the data.

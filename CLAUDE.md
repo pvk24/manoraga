@@ -29,7 +29,7 @@ Out of scope for v1: audio raaga identification (planned v2 as a separate servic
 - `carnatic/tools.py` — tool schemas + deterministic implementations. LLM interprets; tools retrieve and rank.
 - `carnatic/agent.py` — tool-use loop over the Anthropic Messages API; system prompt rebuilt every round
   with the current profile.
-- `evals/` — 40 live evals: tool, keyword, citation, saved-profile and LLM-rubric checks (multi-turn supported). `tests/` — offline unit tests.
+- `evals/` — 41 live evals: tool, keyword, citation, saved-profile and LLM-rubric checks (multi-turn supported). `tests/` — offline unit tests.
 
 ## Rules
 - `docs/agent-behaviour-rules.md` is the readable record of the owner's rules. Any change to a rule updates it in the
