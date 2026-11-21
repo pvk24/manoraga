@@ -1,5 +1,7 @@
 # ManoRaga: a Carnatic music agent
 
+New here? Start with the one-page [overview](docs/overview.md): why ManoRaga exists, what it does and how it works.
+
 Ask about Carnatic music in plain language, get raaga and krithi suggestions for your mood, and let it learn your taste.
 
 ## Quick start
