@@ -14,7 +14,7 @@ EV = "Karnatik.com: raagam aabhEri, taaLam aadi, Composer Mysore VaasudEvaacaary
 MEANING = {"mood": "devotional_reflective", "source": "https://www.shivkumar.org/music/bhajare-re-manasa.htm",
            "quote": "Worship, O mind, Sri Raghuvira, who grants worldly joy and liberation", "about": "song",
            "user_confirmed": True}
-REC = {"title": "Bhajare Re Manasa", "raaga": "Abheri", "composer": "Mysore Vasudevachar", "language": "Sanskrit",
+REC = {"title": "Zz Bhajare Test", "raaga": "Abheri", "composer": "Mysore Vasudevachar", "language": "Sanskrit",
        "tala": "Rupakam", "moods": ["devotional_reflective"]}
 
 
@@ -35,7 +35,7 @@ def test_edit_then_approve(store):
     shown = describe(store.get(pid))
     assert "edited:" in shown and "calm_anxious" in shown and "tala per Karnatik.com" in shown
     assert store.approve(pid)["status"] == "approved"
-    k = krithi(store, "Bhajare Re Manasa")
+    k = krithi(store, "Zz Bhajare Test")
     assert k.tala == "Adi" and k.moods == ["devotional_reflective", "calm_anxious"]
     assert "calm_anxious (curator)" in k.notes and "Curator edited: moods, tala" in k.notes
     assert "devotional_reflective (inferred from" in k.notes          # the confirmed inference keeps its basis
@@ -78,7 +78,7 @@ def test_import_page_export(store):
     assert rep["u1:2"] == "queued for review"
     assert rep["u1:3"].startswith("skipped: rejected")
     assert rep["u1:4"].startswith("not imported: missing")
-    assert krithi(store, "Bhajare Re Manasa").tala == "Adi"
+    assert krithi(store, "Zz Bhajare Test").tala == "Adi"
     queued = store.list("pending")
     assert len(queued) == 1 and "from the chat page" in describe(queued[0])
     # Re-importing the same file changes nothing.
@@ -92,7 +92,7 @@ def test_import_refuses_unverified_moods(store):
            "record": dict(REC), "sources": [SRC], "evidence": EV,
            "mood_evidence": [{**MEANING, "user_confirmed": False}]}
     (r,) = import_export(store, export(bad))
-    assert r["result"].startswith("not imported") and krithi(store, "Bhajare Re Manasa") is None
+    assert r["result"].startswith("not imported") and krithi(store, "Zz Bhajare Test") is None
 
 
 def test_import_rejects_other_files(store):

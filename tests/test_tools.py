@@ -213,7 +213,7 @@ def test_additions_need_trusted_sources_and_evidence(tmp_path):
     cat = Catalog.load(tmp_path / "data")
     ps = ProposalStore(tmp_path / "p.db", tmp_path / "data")
     tb = Toolbox(cat, ProfileStore(tmp_path / "u.db"), "u", ps)
-    rec = {"title": "Bhajare Re Manasa", "raaga": "Abheri", "composer": "Mysore Vasudevachar", "language": "Sanskrit", "tala": "Adi"}
+    rec = {"title": "Zz Bhajare Test", "raaga": "Abheri", "composer": "Mysore Vasudevachar", "language": "Sanskrit", "tala": "Adi"}
     ev = "Karnatik.com Abheri page lists: bhajarE rE maanasa - aadi - Mysore VaasudEvaacaarya"
     assert "error" in tb.run("propose_addition", {"kind": "krithi", "record": rec, "sources": ["https://example.com/x"], "evidence": ev})
     assert "error" in tb.run("propose_addition", {"kind": "krithi", "record": rec, "sources": ["http://karnatik.com/c1256.shtml"], "evidence": ev})
@@ -234,9 +234,9 @@ def test_additions_need_trusted_sources_and_evidence(tmp_path):
     assert "user_confirmed" in tb.run("propose_addition", {**dev, "mood_evidence": [meaning]})["error"]
     ok = tb.run("propose_addition", {**dev, "mood_evidence": [{**meaning, "user_confirmed": True}]})
     assert ok["status"] == "pending curator approval"
-    assert not [k for k in Catalog.load(tmp_path / "data").krithis if k.title == "Bhajare Re Manasa"]   # not until approved
+    assert not [k for k in Catalog.load(tmp_path / "data").krithis if k.title == "Zz Bhajare Test"]   # not until approved
     assert ps.approve(ok["proposal_id"])["status"] == "approved"
-    k = next(k for k in Catalog.load(tmp_path / "data").krithis if k.title == "Bhajare Re Manasa")
+    k = next(k for k in Catalog.load(tmp_path / "data").krithis if k.title == "Zz Bhajare Test")
     assert k.raaga == "Abheri" and k.verified is False and k.moods == ["devotional_reflective"]
     assert k.sources == ["https://karnatik.com/c1256.shtml", "https://www.shivkumar.org/music/bhajare-re-manasa.htm"]
     assert "proposal #" in k.notes and "Moods from: devotional_reflective (inferred from" in k.notes and "user-confirmed" in k.notes

@@ -21,8 +21,8 @@ MEANING = {"mood": "devotional_reflective", "source": "https://www.shivkumar.org
            "user_confirmed": True}
 ITEMS = [
     # New-format addition, accepted after the curator fixed the tala and added a mood.
-    {"id": "u1:a", "user": "u1", "ts": "2026-11-21T10:00:00Z", "type": "addition", "kind": "krithi", "name": "Bhajare Re Manasa",
-     "record": {"title": "Bhajare Re Manasa", "raaga": "Abheri", "composer": "Mysore Vasudevachar", "language": "Sanskrit",
+    {"id": "u1:a", "user": "u1", "ts": "2026-11-21T10:00:00Z", "type": "addition", "kind": "krithi", "name": "Zz Bhajare Test",
+     "record": {"title": "Zz Bhajare Test", "raaga": "Abheri", "composer": "Mysore Vasudevachar", "language": "Sanskrit",
                 "tala": "Rupakam", "moods": ["devotional_reflective"]},
      "sources": [SRC], "evidence": "Karnatik.com: raagam aabhEri, taaLam aadi, Mysore VaasudEvaacaarya",
      "moods": ["devotional_reflective"], "mood_evidence": [MEANING]},
@@ -55,13 +55,13 @@ def test_page_export_imports_cleanly(tmp_path):
     store = ProposalStore(tmp_path / "p.db", tmp_path / "data")
     rep = {r["page_id"]: r["result"] for r in import_export(store, exp)}
     assert rep == {"u1:a": "approved, catalogue updated", "u1:b": "queued for review"}
-    k = next(k for k in Catalog.load(tmp_path / "data").krithis if k.title == "Bhajare Re Manasa")
+    k = next(k for k in Catalog.load(tmp_path / "data").krithis if k.title == "Zz Bhajare Test")
     assert k.tala == "Adi" and k.moods == ["devotional_reflective", "calm_anxious"] and "calm_anxious (curator)" in k.notes
 
 
 APPLY = [
     {"id": "p:1", "type": "addition", "kind": "krithi", "status": "applied",
-     "record": {"title": "Bhajare Re Manasa", "raaga": "abheri", "composer": "Mysore Vasudevachar", "language": "Sanskrit",
+     "record": {"title": "Zz Bhajare Test", "raaga": "abheri", "composer": "Mysore Vasudevachar", "language": "Sanskrit",
                 "tala": "Adi", "moods": ["devotional_reflective", "calm_anxious"]},
      "sources": [SRC], "evidence": "Karnatik.com: raagam aabhEri, taaLam aadi, Mysore VaasudEvaacaarya",
      "mood_evidence": [MEANING, {"mood": "calm_anxious", "source": "curator", "quote": "set by the curator"}]},
@@ -94,7 +94,7 @@ def test_page_catalogue_changes_match_python_approval(tmp_path):
     assert page_ok == py_ok == [True, True, True, False, False, False], (out["results"], rep)
     cat = Catalog.load(tmp_path / "data")
     fields = ("title", "raaga", "composer", "language", "tala", "form", "moods", "avoid_moods", "sources", "verified")
-    for title in ("Bhajare Re Manasa", "Jagadoddharana", "Emi Jesite"):
+    for title in ("Zz Bhajare Test", "Jagadoddharana", "Emi Jesite"):
         py = next(k for k in cat.krithis if k.title == title)
         js = next(k for k in out["krithis"] if k["title"] == title)
         assert {f: getattr(py, f) for f in fields} == {f: js[f] for f in fields}, title
