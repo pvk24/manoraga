@@ -12,13 +12,13 @@ TRUSTED_SOURCES = ["karnatik.com", "shivkumar.org", "rasikas.org", "sangeethapri
 
 
 def listen_links(title: str, raaga: str = "", composer: str = "") -> list[dict]:
-    """Search links to hear a song (no specific recording is claimed). Must match listenLinks() in web/template.html."""
+    """Search links to hear a song (no specific recording is claimed). Must match listenLinks() in web/template.html.
+    Only link types checked to open a results page (21 Nov 2026): YouTube search. Dropped: Sangeethapriya.org (no
+    linkable search), Spotify (results could not be confirmed)."""
     words = " ".join(x for x in (title, raaga, "" if composer in ("", "unknown") else composer) if x)
     q = quote_plus(words.strip())
     return [
         {"site": "YouTube", "url": f"https://www.youtube.com/results?search_query={q}"},
-        {"site": "Spotify", "url": "https://open.spotify.com/search/" + q.replace("+", "%20")},
-        {"site": "Sangeethapriya.org", "url": f"https://www.google.com/search?q=site%3Asangeethapriya.org+{q}"},
     ]
 
 
@@ -27,14 +27,15 @@ def _with_listen(k: dict) -> dict:
 
 
 def source_links(query: str) -> list[dict]:
-    """Search links on the trusted sources. Must match sourceLinks() in web/template.html (parity test)."""
+    """Search links on the trusted sources. Must match sourceLinks() in web/template.html (parity test).
+    Only link types checked to open a results page (21 Nov 2026): a Google search naming the site (a site: search can
+    come back empty) and Wikipedia's search. Rasikas.org's own search refuses visitors who aren't signed in."""
     q = quote_plus(query.strip())
-    g = lambda site: f"https://www.google.com/search?q=site%3A{site}+{q}"
+    g = lambda site: f"https://www.google.com/search?q={site}+{q}"
     return [
-        {"site": "Karnatik.com", "url": g("karnatik.com")},
-        {"site": "Shivkumar.org", "url": g("shivkumar.org")},
-        {"site": "Rasikas.org", "url": f"https://www.rasikas.org/forums/search.php?keywords={q}"},
-        {"site": "Sangeethapriya.org", "url": g("sangeethapriya.org")},
+        {"site": "Karnatik.com", "url": g("karnatik")},
+        {"site": "Shivkumar.org", "url": g("shivkumar")},
+        {"site": "Rasikas.org", "url": g("rasikas")},
         {"site": "Wikipedia", "url": f"https://en.wikipedia.org/w/index.php?search={q}"},
     ]
 
@@ -168,7 +169,7 @@ class Toolbox:
             },
             {
                 "name": "listen_links",
-                "description": "Get links to listen to a song: YouTube, Spotify and Sangeethapriya.org searches for its title, raaga and composer (searches, not a specific recording). Use as soon as the user wants to hear a song, including songs found on the trusted sites that are not in the catalogue. Catalogue songs from recommend/search_krithis already carry these as `listen`.",
+                "description": "Get a link to listen to a song: a YouTube search for its title, raaga and composer (searches, not a specific recording). Use as soon as the user wants to hear a song, including songs found on the trusted sites that are not in the catalogue. Catalogue songs from recommend/search_krithis already carry these as `listen`.",
                 "input_schema": {"type": "object", "properties": {
                     "title": {"type": "string"}, "raaga": {"type": "string"}, "composer": {"type": "string"}},
                     "required": ["title"]},

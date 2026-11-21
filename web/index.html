@@ -516,15 +516,14 @@ function listenLinks(title, raaga = '', composer = '') {
   // Must match listen_links() in carnatic/tools.py (parity test): search links to hear a song, no recording claimed.
   const words = [title, raaga, composer === 'unknown' ? '' : composer].filter(Boolean).join(' ');
   const q = encodeURIComponent(String(words).trim()).replace(/[!'()*]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase()).replace(/%20/g, '+');
-  return [{site: 'YouTube', url: `https://www.youtube.com/results?search_query=${q}`}, {site: 'Spotify', url: 'https://open.spotify.com/search/' + q.split('+').join('%20')},
-          {site: 'Sangeethapriya.org', url: `https://www.google.com/search?q=site%3Asangeethapriya.org+${q}`}];
+  return [{site: 'YouTube', url: `https://www.youtube.com/results?search_query=${q}`}];   // the link type checked to work
 }
 function sourceLinks(query) {
   // Must match source_links() in carnatic/tools.py (parity test): Python quote_plus encoding.
   const q = encodeURIComponent(String(query).trim()).replace(/[!'()*]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase()).replace(/%20/g, '+');
-  const g = site => `https://www.google.com/search?q=site%3A${site}+${q}`;
-  return [{site: 'Karnatik.com', url: g('karnatik.com')}, {site: 'Shivkumar.org', url: g('shivkumar.org')},
-          {site: 'Rasikas.org', url: `https://www.rasikas.org/forums/search.php?keywords=${q}`}, {site: 'Sangeethapriya.org', url: g('sangeethapriya.org')},
+  const g = site => `https://www.google.com/search?q=${site}+${q}`;   // naming the site: a site: search can come back empty
+  return [{site: 'Karnatik.com', url: g('karnatik')}, {site: 'Shivkumar.org', url: g('shivkumar')},
+          {site: 'Rasikas.org', url: g('rasikas')},
           {site: 'Wikipedia', url: `https://en.wikipedia.org/w/index.php?search=${q}`}];
 }
 const TRUSTED = ['karnatik.com', 'shivkumar.org', 'rasikas.org', 'sangeethapriya.org', 'wikipedia.org'];
@@ -572,7 +571,7 @@ const TOOLS = [
   {name: 'source_links', description: 'Get search links for a raaga, krithi or question on the trusted sources (Karnatik.com, Shivkumar.org, Rasikas.org, Sangeethapriya.org, Wikipedia). Use when you cannot verify a fact, so the user can check it themselves.',
    inputSchema: {type: 'object', properties: {query: {type: 'string'}}, required: ['query']},
    execute: ({query}) => ({query, links: sourceLinks(query || '')})},
-  {name: 'listen_links', description: 'Get links to listen to a song: YouTube, Spotify and Sangeethapriya.org searches for its title, raaga and composer (searches, not a specific recording). Use as soon as the user wants to hear a song, including songs found on the trusted sites that are not in the catalogue. Catalogue songs from recommend/search_krithis already carry these as `listen`.',
+  {name: 'listen_links', description: 'Get a link to listen to a song: a YouTube search for its title, raaga and composer (searches, not a specific recording). Use as soon as the user wants to hear a song, including songs found on the trusted sites that are not in the catalogue. Catalogue songs from recommend/search_krithis already carry these as `listen`.',
    inputSchema: {type: 'object', properties: {title: {type: 'string'}, raaga: {type: 'string'}, composer: {type: 'string'}}, required: ['title']},
    execute: ({title, raaga, composer}) => ({title, links: listenLinks(title || '', raaga || '', composer || ''), note: 'Search pages, not a specific recording: say so in one short clause.'})},
   {name: 'set_preference', description: 'Save an explicit user setting. Allowed keys: ' + JSON.stringify(PREFS),
@@ -587,7 +586,7 @@ function summarize(name, out) {
   if (name === 'search_krithis') return out.found ? `${out.krithis.length} match${out.krithis.length > 1 ? 'es' : ''}: ` + out.krithis.slice(0, 3).map(k => `${k.title} (${k.raaga}; ${(k.sources || []).map(dom).join(', ')})`).join(', ') + (out.krithis.length > 3 ? '…' : '') : 'no match in catalogue';
   if (name === 'report_correction') return `noted: ${out.item}` + (out.applied_for_this_user ? ` (your suggestions now skip ${out.applied_for_this_user.remove.join(', ') || 'nothing'}${out.applied_for_this_user.add.length ? '; counts for ' + out.applied_for_this_user.add.join(', ') : ''})` : '') + '; sent to curator';
   if (name === 'suggest_addition') return `sent to curator to verify and add${out.verified_sources ? ` (${out.verified_sources} trusted source${out.verified_sources > 1 ? 's' : ''})` : ''}`;
-  if (name === 'listen_links') return 'listen links (YouTube, Spotify, Sangeethapriya) for ' + out.title;
+  if (name === 'listen_links') return 'YouTube link for ' + out.title;
   if (name === 'source_links') return 'could not verify in catalogue; gave search links for ' + out.links.map(l => l.site).join(', ');
   if (name === 'recommend') return (out.closest_match ? `no song tagged for the mood; closest match ${out.closest_match.used_mood}; ` : '') + (out.recommendations.length ? 'picks: ' + out.recommendations.map(r => `${r.raaga} → ${(r.krithis[0] || {}).title || 'no krithi'}`).join('; ') : 'no picks');
   return 'saved to your taste profile';
@@ -608,6 +607,7 @@ Facts and grounding (most important rule)
 Never state an assumption as a fact. Every specific fact (which raaga a song is in, scale, parent melakarta, composer, tala, language, dates) must come from a catalogue tool result: call lookup_raaga / search_krithis first, always.
 ${webLine()}
 - Catalogue rows carry sources. When you state a catalogue fact, end with one short line: "Source: [Karnatik.com](url)" using the first URL in sources.
+- Links: give only URLs a tool returned (pages found or read by web search, the \`listen\` links, listen_links, source_links). Never type, build or guess a URL yourself, and never present a search link as a specific page or recording.
 - If the user questions an answer ("isn't it in X?"), re-check with the tools and keep to what the source says, but help them see where the mix-up may come from: search results include similar_titles (e.g. Marivere Dikkevvaru is in Lathangi, while the near-identical Marivere Dikkevarayya is in Shanmukhapriya). Never just repeat yourself.
 - If a row's notes record a different view from a source (another tala, scale or tune), mention it in one clause instead of picking a side.
 - General concepts (gamaka, tala, alapana, the melakarta system, krithi structure) may be explained in general terms, but any example raaga or krithi you name must come from the catalogue.

@@ -19,6 +19,7 @@ This file is the main, readable copy of the rules. When a rule changes, update i
 - Every fact names where it came from ("Source: Karnatik.com <link>"). Web results are "according to <site>", never "verified".
 - When sources disagree (tala, scale, tune), the agent shows both views instead of picking one.
 - When the user pushes back ("isn't it in X?"), the agent re-checks, keeps to the source, and explains the likely mix-up, e.g. a near-identical title (search results list similar titles). It never just repeats itself.
+- Links (owner's rule, 21 Nov 2026): every link must open a working page. The agent gives only URLs a tool returned (pages it found or read, listen links, source_links), never one it typed or guessed. The link builders use only link types that always open a results page: a YouTube search for listening; a Google search naming the site (Karnatik.com, Shivkumar.org, Rasikas.org) and Wikipedia's search for checking facts. Each type was opened and checked on 21 Nov 2026. Dropped: Sangeethapriya.org (its new site has no linkable search; Google `site:` searches on it came back empty), Spotify (results couldn't be confirmed) and the Rasikas.org forum search (refuses visitors who aren't signed in).
 - Concepts may be explained in general terms, but any example raaga or krithi must come from the catalogue or a search.
 - Evals: fact-01 to fact-09 (must cite), unknown-01, ground-01 to ground-03.
 
@@ -33,7 +34,7 @@ This file is the main, readable copy of the rules. When a rule changes, update i
   - sit_with_sadness never falls back to an uplifting mood. Catalogue validation enforces this.
   - Devotional is never the first fallback except for fresh_morning: it holds most of the songs and would take over.
 - A song found on the web is never treated as mood-tagged. It may be mentioned as something to explore, clearly labelled.
-- Listening (owner's rule, 21 Nov 2026): the agent can't play audio but always gives links. Whenever it names a song for someone to hear, or they want to hear one, the same reply has YouTube, Spotify and Sangeethapriya.org search links (`listen` on every song from recommend/search_krithis; `listen_links` for any song, in the catalogue or not), described as searches, not a specific recording. It never offers to listen without the links. Eval: listen-01.
+- Listening (owner's rule, 21 Nov 2026): the agent can't play audio but always gives links. Whenever it names a song for someone to hear, or they want to hear one, the same reply has a YouTube search link (`listen` on every song from recommend/search_krithis; `listen_links` for any song, in the catalogue or not), described as searches, not a specific recording. It never offers to listen without the links. Eval: listen-01.
 - Mood associations are traditional, not universal.
 - "Avoid" rules are hard exclusions, e.g. Thodi is never recommended for light/playful.
 - Likes, dislikes and stated preferences are saved quietly and change later suggestions. The latest signal wins.

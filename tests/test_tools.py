@@ -290,9 +290,12 @@ def test_listen_links_come_with_every_song(tmp_path):
     tb = make(tmp_path)
     rec = tb.run("recommend", {"moods": ["grand_uplifted"], "limit": 2})["recommendations"]
     k = rec[0]["krithis"][0]
-    assert [l["site"] for l in k["listen"]] == ["YouTube", "Spotify", "Sangeethapriya.org"]
+    assert [l["site"] for l in k["listen"]] == ["YouTube"]
     assert "youtube.com/results?search_query=" in k["listen"][0]["url"]
     found = tb.run("search_krithis", {"title": "Nidhi Chala"})["krithis"][0]
     assert found["listen"][0]["url"].endswith("Nidhi+Chala+Sukhama+Kalyani+Tyagaraja")
     out = tb.run("listen_links", {"title": "Laali Laaliyani", "raaga": "Harikambhoji", "composer": "Tyagaraja"})
-    assert out["links"][1]["url"] == "https://open.spotify.com/search/Laali%20Laaliyani%20Harikambhoji%20Tyagaraja"
+    assert out["links"] == [{"site": "YouTube", "url": "https://www.youtube.com/results?search_query=Laali+Laaliyani+Harikambhoji+Tyagaraja"}]
+    # Fact-checking links: only link types checked to work (no site: searches, no Rasikas forum search).
+    urls = [l["url"] for l in tb.run("source_links", {"query": "Nidhi Chala Sukhama"})["links"]]
+    assert all("site%3A" not in u and "search.php" not in u for u in urls)

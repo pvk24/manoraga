@@ -98,6 +98,6 @@ Out of scope for v1: audio raaga identification (planned v2 as a separate servic
 ## Next steps
 1. Grow the catalogue (target 400 raagas / 1,000 krithis) from reliable sources; add `source_url` column.
 2. Get a knowledgeable musician to review rows and flip `verified`.
-3. Done 21 Nov: listen links (YouTube/Spotify/Sangeethapriya searches) on every song + listen_links tool. Next: real recording links.
+3. Done 21 Nov: listen link (YouTube search, checked to work) on every song + listen_links tool. Next: real recording links.
 4. Web UI (Streamlit or FastAPI + simple frontend) with thumbs up/down that calls record_feedback directly.
 5. v2: `identify_raaga_from_swaras` (text, deterministic), then audio identification service.
