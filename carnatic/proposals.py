@@ -208,7 +208,8 @@ class ProposalStore:
                     return {"error": f"the basis for '{m}' needs the actual words (quote)"}
                 if about not in ("song", "raaga"):
                     return {"error": "mood evidence 'about' must be 'song' or 'raaga'"}
-                if src not in ("user", "curator") and e.get("user_confirmed") is not True:
+                if src not in ("user", "curator") and e.get("user_confirmed") is not True \
+                        and e.get("needs_curator_confirmation") is not True:
                     return {"error": f"mood '{m}' is your inference: show it to the user with its basis and propose it "
                                      "only after they confirm (user_confirmed: true)"}
         extra_ev = [e for e in mood_evidence if isinstance(e, dict) and e.get("mood") not in moods]
@@ -379,7 +380,9 @@ class ProposalStore:
             def basis(e):
                 if e["source"] in ("user", "curator"):
                     return e["source"]
-                return "inferred from " + e["source"] + ", user-confirmed" + (", raaga-level" if e.get("about") == "raaga" else "")
+                who = ("found by the curator agent, confirmed by the curator" if e.get("confirmed_by") == "curator" or not e.get("user_confirmed")
+                       else "user-confirmed")
+                return "inferred from " + e["source"] + ", " + who + (", raaga-level" if e.get("about") == "raaga" else "")
             parts = list(dict.fromkeys(f"{e['mood']} ({basis(e)})" for e in mev))   # one line per mood + basis
             mood_note = ("Moods from: " + "; ".join(parts)) if parts else ""
             edits = pay.get("edits") or []

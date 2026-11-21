@@ -79,6 +79,9 @@ The agent can only **propose** catalogue changes; you approve them.
 - **New songs/raagas** (Python agent): found by web search on Karnatik.com / Shivkumar.org / Rasikas.org /
   Sangeethapriya.org, proposed with source URLs and quoted evidence, and queued for you. The agent also infers moods from
   the song's meaning on those pages and suggests them; the user confirms before they're proposed.
+- **Background curator:** once a week a scheduled Claude run finds where the catalogue is thin (`python -m carnatic.gaps --text`),
+  researches fitting songs on the trusted sites, and leaves checked suggestions in your Review panel, marked "Found by the
+  curator agent". Its moods are unconfirmed until you accept. Run it any time by asking Claude to "run the ManoRaga curator".
 - **Updates, not duplicates:** when a user adds to or corrects a song that's already waiting for review, the same
   suggestion is updated (and reopened for review if you had decided). The agent looks up missing facts itself.
 - **Review in the terminal:** `python cli.py --curator` then `/proposals`, `/edit <id> field=value ...`

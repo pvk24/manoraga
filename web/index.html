@@ -199,7 +199,7 @@ function krithisFor({raaga, composer, title} = {}) {
 const TRUSTED_SITES = ['karnatik.com', 'shivkumar.org', 'rasikas.org', 'sangeethapriya.org'];
 const trustedUrl = u => { try { const x = new URL(u), h = x.hostname.toLowerCase(); return x.protocol === 'https:' && TRUSTED_SITES.some(d => h === d || h.endsWith('.' + d)); } catch (e) { return false; } };
 const CORRECTABLE = {krithi: ['raaga', 'composer', 'language', 'tala', 'moods'], raaga: ['arohana', 'avarohana', 'parent', 'melakarta_number', 'moods']};
-function moodBasis(e) { return e.source === 'user' || e.source === 'curator' ? e.source : 'inferred from ' + e.source + ', user-confirmed' + (e.about === 'raaga' ? ', raaga-level' : ''); }
+function moodBasis(e) { return e.source === 'user' || e.source === 'curator' ? e.source : 'inferred from ' + e.source + (e.confirmed_by === 'curator' ? ', found by the curator agent, confirmed by the curator' : ', user-confirmed') + (e.about === 'raaga' ? ', raaga-level' : ''); }
 function checkChange(it) {
   // Returns an error string, or null if `it` (an export-format entry) may be applied to the current catalogue.
   const lc = x => String(x || '').trim().toLowerCase();
@@ -778,7 +778,7 @@ function renderTaste() {
     <div class="thead"><h2>Your taste</h2><button class="close" type="button" data-close>Close</button></div>
     <div><h3>How much detail</h3><div class="seg" role="group" aria-label="Level">${['beginner', 'intermediate', 'advanced'].map(l => `<button type="button" data-level="${l}" aria-pressed="${lv === l}">${l[0].toUpperCase() + l.slice(1)}</button>`).join('')}</div></div>
     <div><h3>Languages you enjoy</h3><div class="tags">${LANGS.map(l => `<button class="tog" type="button" data-lang="${l}" aria-pressed="${langs.includes(l)}">${l}</button>`).join('')}</div></div>
-    <div><h3>Loved${loves.length ? ' (' + loves.length + ')' : ''}</h3>${tags(loves) || `<p class="empty">Nothing yet. Tell me what you like, or tap Love it on a suggestion.</p><div class="row" style="margin-top:8px"><button class="btn" type="button" data-favs>Start with Pranav's 12 favourites</button></div>`}</div>
+    <div><h3>Loved${loves.length ? ' (' + loves.length + ')' : ''}</h3>${tags(loves) || `<p class="empty">Nothing yet. Tell me what you like, or tap Love it on a suggestion.</p><div class="row" style="margin-top:8px"><button class="btn" type="button" data-favs>Start with Pranav's favourites</button></div>`}</div>
     <div><h3>Not for me${nopes.length ? ' (' + nopes.length + ')' : ''}</h3>${tags(nopes) || '<p class="empty">Nothing ruled out.</p>'}</div>
     ${[].concat(pr.favourite_composers || []).length ? `<div><h3>Favourite composers</h3><p class="empty">${esc([].concat(pr.favourite_composers).join(', '))}</p></div>` : ''}
     ${Object.keys(profile.overrides || {}).length ? `<div><h3>Your notes on songs</h3><div class="tags">${Object.entries(profile.overrides).filter(([, o]) => o.remove.length || o.add.length).map(([k, o]) => { const nm = k.split('|').slice(1).join('|'); const lbl = (ms) => ms.map(m => (MOODS[m] || {label: m}).label.toLowerCase()).join(', ');
@@ -826,9 +826,11 @@ function merged(it) {
     const record = {...it.record, ...(e.record || {})};
     const moods = e.moods || it.record.moods || [];
     let mev = (it.mood_evidence || []).filter(x => moods.includes(x.mood));
+    // Moods the background curator inferred wait for the owner: accepting the suggestion confirms them.
+    if (d.status === 'accepted' || d.status === 'applied') mev = mev.map(x => x.needs_curator_confirmation && !x.user_confirmed ? {...x, user_confirmed: true, confirmed_by: 'curator'} : x);
     for (const m of moods) if (!mev.some(x => x.mood === m)) mev.push({mood: m, source: 'curator', quote: d.note || 'set by the curator'});
     if (moods.length) record.moods = moods; else delete record.moods;
-    Object.assign(out, {kind: it.kind, record, sources: it.sources || [], evidence: it.evidence || '', details: it.details || '', mood_evidence: mev});
+    Object.assign(out, {kind: it.kind, record, sources: it.sources || [], evidence: it.evidence || '', details: it.details || '', mood_evidence: mev, by: it.by || ''});
   } else {
     Object.assign(out, {item_type: it.item_type, item_name: it.item_name, reason: it.reason || '', sources: it.sources || [],
       remove_moods: e.remove_moods || it.remove_moods || [], add_moods: e.add_moods || it.add_moods || [],
@@ -874,7 +876,8 @@ function cardBody(it) {
   const m = merged(it), rows = [];
   if (it.type === 'addition') {
     for (const k of (it.kind === 'raaga' ? RG_FIELDS : KR_FIELDS).slice(1)) if (m.record[k]) rows.push([k.replace('_', ' '), esc(m.record[k])]);
-    if (m.mood_evidence.length) rows.push(['moods', m.mood_evidence.map(e => `<b>${esc(moodLbl(e.mood))}</b> · ${e.source === 'curator' ? 'set by you' : e.source === 'user' ? 'user\'s words' : 'inferred' + (e.about === 'raaga' ? ' (raaga-level)' : '') + (e.user_confirmed ? ', user confirmed' : '')}${e.quote ? `<p class="rq">${esc(e.quote)}</p>` : ''}`).join('')]);
+    if (it.kind !== 'raaga' && !m.record.language) rows.push(['language', '<span class="empty">not stated on the trusted sites: fill it in with Edit</span>']);
+    if (m.mood_evidence.length) rows.push(['moods', m.mood_evidence.map(e => `<b>${esc(moodLbl(e.mood))}</b> · ${e.source === 'curator' ? 'set by you' : e.source === 'user' ? 'user\'s words' : 'inferred' + (e.about === 'raaga' ? ' (raaga-level)' : '') + (e.confirmed_by === 'curator' ? ', confirmed by you' : e.user_confirmed ? ', user confirmed' : e.needs_curator_confirmation ? ' by the curator agent, <b>not yet confirmed</b>: accepting confirms it' : '')}${e.quote ? `<p class="rq">${esc(e.quote)}</p>` : ''}`).join('')]);
     else rows.push(['moods', '<span class="empty">none: set them before accepting, or leave for later</span>']);
     if (m.sources.length) rows.push(['sources', linkList(m.sources)]);
     if (m.evidence) rows.push(['evidence', `<p class="rq">${esc(m.evidence)}</p>`]);
@@ -914,7 +917,7 @@ function renderReview() {
     ${REV.loading && !REV.items.length ? '<p class="empty">Loading…</p>' : ''}
     ${!REV.loading && !list.length ? '<p class="empty">Nothing waiting. New suggestions appear here.</p>' : ''}
     ${list.map(it => { const d = dec(it), st = d.exported ? 'exported' : (d.status || 'pending'), live = OVERLAY.states[it.id], upd = changedSince(it), name = it.type === 'addition' ? merged(it).record[it.kind === 'raaga' ? 'name' : 'title'] : it.item_name;
-      return `<article class="rcard" data-status="${st}"><div class="rh"><div><span class="rk">${it.type === 'addition' ? 'New ' + it.kind : 'Correction · ' + esc(it.item_type || '')}${it.updates ? ` · updated ${it.updates === 1 ? 'once' : it.updates + ' times'}` : ''}</span><br><b>${esc(name || '?')}</b></div><span class="pill ${st === 'applied' ? 'accepted' : st}">${st === 'applied' ? (live && live.state === 'in_repo' ? 'In repo' : live && live.state === 'error' ? 'Not applied' : 'In catalogue') : st[0].toUpperCase() + st.slice(1)}</span></div>
+      return `<article class="rcard" data-status="${st}"><div class="rh"><div><span class="rk">${it.by === 'curator-agent' ? 'Found by the curator agent · ' : ''}${it.type === 'addition' ? 'New ' + it.kind : 'Correction · ' + esc(it.item_type || '')}${it.updates ? ` · updated ${it.updates === 1 ? 'once' : it.updates + ' times'}` : ''}</span><br><b>${esc(name || '?')}</b></div><span class="pill ${st === 'applied' ? 'accepted' : st}">${st === 'applied' ? (live && live.state === 'in_repo' ? 'In repo' : live && live.state === 'error' ? 'Not applied' : 'In catalogue') : st[0].toUpperCase() + st.slice(1)}</span></div>
         ${live && live.state === 'error' ? `<p class="notice">${esc(live.error)}</p>` : ''}
         ${upd ? `<p class="notice">${st === 'applied' ? 'Updated after you added it to the catalogue. To take the update: Remove from catalogue, review, then add it again.' : 'Updated since you last decided, so it needs your review again.'}</p>` : ''}
         ${REV.editing === it.id ? editForm(it) : cardBody(it)}

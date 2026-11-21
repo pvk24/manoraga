@@ -54,6 +54,10 @@ Out of scope for v1: audio raaga identification (planned v2 as a separate servic
 - Completeness (owner's rule): the agent searches the trusted sources for every missing field of a new song (raaga,
   composer, language, tala, form, meaning for the mood) on its own, before showing it; it asks the user only about
   fields those sources don't state. Page suggest_addition returns `missing` to prompt this.
+- Background curator: `.claude/skills/curate-manoraga` (weekly scheduled task) + `carnatic/gaps.py` (deterministic gap
+  ranking, targets in curator/config.json) + `carnatic/curator.py` (check candidates; add to the page's suggestion box with
+  the page's own twin/merge rule). Its moods carry needs_curator_confirmation; the owner's Accept confirms them (page
+  merged()). The chat agent's propose_addition strips that marker. The curator never edits data/ or approves.
 - Curation: one queue (proposals.db). The page's owner-only Review panel stores decisions in db `curation/decisions`
   and exports `manoraga-suggestions/1` JSON; carnatic/page_import.py imports it (accepted -> approved, rest queued,
   idempotent by page id). tests/test_review_export.py runs the page's export code against the importer: change both

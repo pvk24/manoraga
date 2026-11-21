@@ -375,7 +375,11 @@ class Toolbox:
     def _t_propose_addition(self, kind: str, record: dict, sources: list, evidence: str, mood_evidence: list | None = None):
         if not self.proposals:
             return {"error": "additions can't be proposed in this app"}
-        return self.proposals.propose_addition(self.user_id, self.cat, kind, dict(record), sources, evidence, mood_evidence)
+        # The chat agent must get the user's confirmation for an inferred mood; it can't defer it to the curator
+        # (only the background curator's entries, arriving through the review import, carry that marker).
+        mev = [{k: v for k, v in e.items() if k != "needs_curator_confirmation"} if isinstance(e, dict) else e
+               for e in mood_evidence or []]
+        return self.proposals.propose_addition(self.user_id, self.cat, kind, dict(record), sources, evidence, mev)
 
     def _t_source_links(self, query: str):
         return {"query": query, "links": source_links(query)}

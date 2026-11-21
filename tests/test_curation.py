@@ -152,3 +152,14 @@ def test_reimport_of_an_updated_page_suggestion_updates_the_queue(store):
     assert import_export(store, export(later))[0]["result"] == "updated the queued proposal"
     (p,) = store.list("pending")
     assert p["payload"]["record"]["form"] == "varnam"
+
+
+def test_chat_agent_cannot_defer_mood_confirmation(tmp_path):
+    """Only the background curator's suggestions may leave a mood for the curator to confirm; the chat agent may not."""
+    from carnatic.profile import ProfileStore
+    from carnatic.tools import Toolbox
+    shutil.copytree(DATA_DIR, tmp_path / "data")
+    tb = Toolbox(Catalog.load(tmp_path / "data"), ProfileStore(tmp_path / "u.db"), "u", ProposalStore(tmp_path / "p.db", tmp_path / "data"))
+    res = tb.run("propose_addition", {"kind": "krithi", "record": {**REC, "title": "Zz Unconfirmed"}, "sources": [SRC], "evidence": EV,
+                                      "mood_evidence": [{**MEANING, "user_confirmed": False, "needs_curator_confirmation": True}]})
+    assert "user_confirmed" in res["error"]

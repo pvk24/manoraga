@@ -109,6 +109,7 @@ class Catalog:
     @classmethod
     def load(cls, data_dir: Path = DATA_DIR) -> "Catalog":
         cat = cls()
+        cat.data_dir = Path(data_dir)
         with open(data_dir / "raagas.csv", newline="", encoding="utf-8") as f:
             for r in csv.DictReader(f):
                 raaga = Raaga(

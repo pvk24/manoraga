@@ -48,13 +48,14 @@ This file is the main, readable copy of the rules. When a rule changes, update i
   - Python agent: `propose_addition` refuses an inferred mood without its source text and `user_confirmed: true` (moods in the user's own words need no confirmation).
   - Chat page: `suggest_addition` sends the facts as a structured record, keeps only trusted source URLs and confirmed moods with a basis, and tells the agent which moods it dropped.
 - Updates are not new suggestions (owner's rule, 21 Nov 2026): adding to or correcting a song, raaga or correction that is still waiting for review updates it in place (same id; new values win; nothing already known is erased). Two songs with the same title in different raagas stay separate. In the Review panel, an update after the curator decided reopens it, marked as updated; one already added to the page's catalogue says to remove and re-add it.
+- Background curator (owner's rule, 21 Nov 2026): a weekly scheduled run of Claude follows `.claude/skills/curate-manoraga/SKILL.md`. It finds the catalogue's biggest gaps (`python -m carnatic.gaps`, targets in `curator/config.json`: songs per mood, per language, per raaga), researches songs that fill them on the four trusted sites only, and fills every field from the pages. Candidates must pass `python -m carnatic.curator check`: complete facts, trusted sources, quoted evidence, a catalogue raaga, no avoid rules broken, and never a song already in the catalogue, already waiting, or rejected before. At most `max_suggestions_per_run` (10) of its suggestions wait for the owner at any time: a run adds only the room left, and nothing while 10 are still undecided. They go into the owner's suggestion box, labelled "Found by the curator agent". Moods it infers are marked not yet confirmed: the owner's Accept confirms them. The chat agent can't use that path, so its inferred moods still need the user's confirmation. The curator never edits data, commits or approves.
 - The agent has no approve tool. The curator decides outside the model, in one queue (`proposals.db`):
   - Terminal: `python cli.py --curator` then `/proposals`, `/edit <id> field=value ...`, `/approve <id>`, `/reject <id>`, `/import <file>`; or `python -m carnatic.review list|show|edit|approve|reject|import`. Each proposal shows its facts, sources, evidence, the basis for each mood, where it came from, and any edits.
   - Chat page: the owner gets a Review button (with a count of undecided suggestions). Accept, Edit or Reject each one there; decisions are stored owner-only. "Add to catalogue" puts accepted ones live in the page at once (same checks as the repo); "Remove from catalogue" takes one out. Export for the repo and import the file to update the CSVs. Re-importing is safe, and an updated suggestion updates its queued proposal.
   - Edits are logged. A mood the curator sets is recorded as "curator". Moods keep their primary-first order.
 - Approval writes `data/*.csv`, re-validates the whole catalogue, and rolls back on any inconsistency. New rows carry `verified=false`, their sources, where each mood came from, any curator edits, and a note naming the proposal.
 - Friends' copies: each owner reviews their own box; to reach the shared catalogue they attach their export to a GitHub issue.
-- Evals: corr-01, corr-02, disc-01, disc-02, disc-04 (inferred mood, user validates), disc-05 (completes missing facts unasked), disc-06 (an update keeps the same proposal).
+- Evals: corr-01, corr-02, disc-01, disc-02, disc-04 (inferred mood, user validates), disc-05 (completes missing facts unasked), disc-06 (an update keeps the same proposal). Offline: tests/test_curator.py (gaps, checks, limits, and the same twin rule as the page).
 
 ## 5. Data policy
 - `verified=true` means the owner (10 years of Carnatic training) reviewed the row. The agent never flips it.
@@ -73,7 +74,7 @@ This file is the main, readable copy of the rules. When a rule changes, update i
 - Known data gaps (song-level mood tags): only Neelambari has a song tagged for sleep; only Kapi and Kanada songs are tagged romantic/nostalgic; only 2 Kannada songs. There is no "evening" mood key; time of day lives on raagas.
 
 ## 6. Quality gates
-- `pytest` (57 offline tests) after every change. It includes:
+- `pytest` (74 offline tests) after every change. It includes:
   - a parity test: 225 identical tool calls through the Python and web versions must match exactly (the page's web-search and review code is page-only and sits outside the parity core);
   - contract tests that run the page's review export through the Python importer, check "Add to catalogue" gives the same rows as Python approval, and replay a real duplicate sequence through both merge implementations;
   - checks that the committed `web/index.html` and the setup instructions are current.

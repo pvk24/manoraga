@@ -1,0 +1,9 @@
+{
+  "_about": "Targets for the background curator (python -m carnatic.gaps). Edit freely; the curator works on the biggest gaps first.",
+  "songs_per_mood": 6,
+  "songs_per_language": 8,
+  "songs_per_raaga": 2,
+  "max_suggestions_per_run": 10,
+  "max_gaps_per_run": 3,
+  "skip_raagas": ["Ragamalika"]
+}

@@ -138,3 +138,44 @@ def test_updates_merge_in_the_page_box_like_in_python():
     for e in SENDS[0::2]:
         py = merge_addition(py, e)
     assert py["record"] == v["record"] and py["mood_evidence"] == v["mood_evidence"] and py["sources"] == v["sources"]
+
+
+def test_curator_agent_finds_are_confirmed_by_accepting():
+    """A background-curator suggestion: its inferred mood is unconfirmed until the owner accepts it in the page."""
+    bot = {"id": "U:curator-agent-x", "user": "U", "ts": "2026-11-22T03:00:00Z", "status": "pending", "by": "curator-agent",
+           "type": "addition", "kind": "krithi", "name": "Zz Lullaby",
+           "record": {"title": "Zz Lullaby", "raaga": "Neelambari", "composer": "Test", "language": "Tamil", "tala": "Adi",
+                      "form": "krithi", "moods": ["wind_down_sleep"]},
+           "sources": [SRC], "evidence": "raagam neelaambari taaLam aadi Composer Test",
+           "mood_evidence": [{"mood": "wind_down_sleep", "source": SRC, "quote": "a lullaby rocking the child to sleep gently",
+                              "about": "song", "needs_curator_confirmation": True}]}
+    html = build(write=False)
+
+    def export(decisions):
+        out = subprocess.run(["node", str(ROOT / "tests" / "js_review_runner.js")], input=json.dumps(
+            {"html": html, "items": [bot], "decisions": decisions}), capture_output=True, text=True, check=True)
+        return json.loads(out.stdout)
+
+    def page_check(item):
+        out = subprocess.run(["node", str(ROOT / "tests" / "js_apply_runner.js")], input=json.dumps(
+            {"html": html, "items": [item]}), capture_output=True, text=True, check=True)
+        return json.loads(out.stdout)["results"][0]["error"]
+
+    pending = export({})["items"][0]
+    assert pending["mood_evidence"][0].get("user_confirmed") is not True
+    assert page_check(pending)                                   # can't be added before the owner accepts
+    accepted = export({bot["id"]: {"status": "accepted", "at": "2026-11-22T04:00:00Z"}})["items"][0]
+    assert accepted["mood_evidence"][0]["user_confirmed"] is True and accepted["mood_evidence"][0]["confirmed_by"] == "curator"
+    assert page_check(accepted) is None                          # Add to catalogue works once accepted
+
+    import tempfile
+    d = Path(tempfile.mkdtemp())
+    shutil.copytree(DATA_DIR, d / "data")
+    store = ProposalStore(d / "p.db", d / "data")
+    assert import_export(store, {"format": "manoraga-suggestions/1", "items": [pending]})[0]["result"] == "queued for review"
+    d2 = Path(tempfile.mkdtemp())
+    shutil.copytree(DATA_DIR, d2 / "data")
+    store2 = ProposalStore(d2 / "p.db", d2 / "data")
+    assert import_export(store2, {"format": "manoraga-suggestions/1", "items": [accepted]})[0]["result"].startswith("approved")
+    k = next(k for k in Catalog.load(d2 / "data").krithis if k.title == "Zz Lullaby")
+    assert "found by the curator agent, confirmed by the curator" in k.notes and k.moods == ["wind_down_sleep"]
