@@ -103,13 +103,21 @@ def check_candidate(cat: Catalog, e: dict, items: list[dict], decisions: dict) -
         problems.append("needs at least one source, all https pages on the four trusted sites")
     if len(str(e.get("evidence") or "").strip()) < 20:
         problems.append("evidence must quote what the source page says")
-    raaga = None
+    raaga, new_raaga = None, None
     if kind == "krithi" and _filled(rec.get("raaga")):
         raaga = cat.resolve_raaga(rec["raaga"])
-        if not raaga:
-            problems.append(f"raaga '{rec['raaga']}' is not in the catalogue: suggest only songs in catalogue raagas")
-        else:
+        if raaga:
             rec["raaga"] = raaga.name
+        else:
+            # A raaga suggested in this run (listed before its songs) or already waiting for review is fine:
+            # the owner adds the raaga first, then its songs.
+            new_raaga = _waiting_raaga(items, decisions, rec["raaga"])
+            if not new_raaga:
+                problems.append(f"raaga '{rec['raaga']}' is not in the catalogue: suggest the raaga too "
+                                "(before its songs) or leave the song out")
+            else:
+                rec["raaga"] = new_raaga["name"]
+                warnings.append(f"{new_raaga['name']} is a new raaga waiting for review: the owner adds it first")
     # Never re-suggest: in the catalogue, waiting for review, or rejected by the owner.
     t = _title_key(e)
     if kind == "krithi" and any(_norm(_base_title(k.title)) == t and (not raaga or k.raaga == raaga.name) for k in cat.krithis):
@@ -140,24 +148,49 @@ def check_candidate(cat: Catalog, e: dict, items: list[dict], decisions: dict) -
                 problems.append(f"mood '{m}': mark it needs_curator_confirmation (the owner confirms on review)")
         if raaga and m in raaga.avoid_moods:
             problems.append(f"{raaga.name} must never be suggested for '{m}'")
-    if not problems and kind == "krithi":
+    if not problems:
         # Dry run of approval on a scratch copy: the same validation the real import runs.
         tmp = Path(tempfile.mkdtemp())
         try:
             shutil.copytree(cat_dir(cat), tmp / "data")
             st = ProposalStore(tmp / "p.db", tmp / "data")
-            trial = {**rec, "language": rec.get("language") or "Unknown"}
+            steps = []
+            if new_raaga:
+                steps.append(("raaga", new_raaga, ["https://www.karnatik.com/"], "waiting raaga, applied first for the dry run", []))
+            trial = {**rec, "language": rec.get("language") or "Unknown"} if kind == "krithi" else rec
             mev = [{**x, "user_confirmed": True} for x in e.get("mood_evidence") or []]
-            res = st.propose_addition(AGENT, Catalog.load(tmp / "data"), "krithi", trial, list(srcs), e.get("evidence", ""), mev)
-            if "error" in res:
-                problems.append(res["error"])
-            else:
-                ap = st.approve(res["proposal_id"])
+            steps.append((kind, trial, list(srcs), e.get("evidence", ""), mev))
+            for k, r, sr, ev, me in steps:
+                res = st.propose_addition(AGENT, Catalog.load(tmp / "data"), k, r, sr, ev,
+                                          me or [{"mood": m, "source": sr[0], "quote": "dry run of a waiting raaga",
+                                                  "user_confirmed": True} for m in r.get("moods") or []])
+                ap = res if "error" in res else st.approve(res["proposal_id"])
                 if "error" in ap:
-                    problems.append(ap["error"])
+                    problems.append(ap["error"] if k == kind else f"the waiting raaga doesn't apply cleanly: {ap['error']}")
+                    break
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
     return {"name": name, "ok": not problems, "problems": problems, "warnings": warnings, "record": rec}
+
+
+def _waiting_raaga(items: list[dict], decisions: dict, name: str) -> dict | None:
+    """A raaga addition in the box, not rejected, with this name or alias."""
+    n = _norm(name)
+    for x in items:
+        rec = x.get("record") or {}
+        if x.get("kind") != "raaga" or x.get("type") != "addition":
+            continue
+        if (decisions.get(x.get("id"), {}) or {}).get("status") == "rejected":
+            continue
+        names = [rec.get("name", "")] + str(rec.get("aliases") or "").split(";")
+        if any(_norm(a) == n for a in names if a.strip()):
+            return rec
+    return None
+
+
+def raagas_first(candidates: list[dict]) -> list[dict]:
+    """New raagas go before songs, so a song in a new raaga can follow it (and the owner sees the raaga first)."""
+    return sorted(candidates, key=lambda c: c.get("kind") != "raaga")
 
 
 def cat_dir(cat: Catalog) -> Path:
@@ -167,7 +200,7 @@ def cat_dir(cat: Catalog) -> Path:
 def run_check(cat: Catalog, candidates: list[dict], box: dict, decisions: dict) -> list[dict]:
     items = [dict(x) for x in (box or {}).get("items", [])]
     out = []
-    for c in candidates:
+    for c in raagas_first(candidates):
         r = check_candidate(cat, c, items, (decisions or {}).get("decisions", {}))
         out.append(r)
         if r["ok"]:      # later candidates must not duplicate earlier ones in the same run
@@ -188,7 +221,7 @@ def run_add(cat: Catalog, candidates: list[dict], box: dict, decisions: dict, ui
     waiting = waiting_for_owner(items, (decisions or {}).get("decisions", {}))
     room = max(0, limit - waiting)
     report, added = [], 0
-    for c in candidates:
+    for c in raagas_first(candidates):
         r = check_candidate(cat, c, items, (decisions or {}).get("decisions", {}))
         if r["ok"] and added >= room:
             r = {**r, "ok": False, "problems": [f"no room: {waiting} curator suggestions already wait for the owner "
@@ -214,7 +247,9 @@ def main(argv: list[str]) -> int:
         box, dec = _load(opts.get("--box"), {"items": []}), _load(opts.get("--decisions"), {"decisions": {}})
         limit = load_config()["max_suggestions_per_run"]
         waiting = waiting_for_owner(box.get("items", []), dec.get("decisions", {}))
-        print(json.dumps({"waiting": waiting, "limit": limit, "room": max(0, limit - waiting)}))
+        from .gaps import plan
+        room = max(0, limit - waiting)
+        print(json.dumps({"waiting": waiting, "limit": limit, "room": room, "slots": plan(room)}))
         return 0
     if len(argv) < 2 or argv[0] not in ("check", "add"):
         print(__doc__)

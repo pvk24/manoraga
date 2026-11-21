@@ -122,3 +122,46 @@ const sb = {ITEMS: items, PROBES: probes, RESULT: null, Blob, URL, console}; vm.
     out = subprocess.run(["node", "-e", js_code], input=json.dumps({"html": html, "items": items, "probes": probes}),
                          capture_output=True, text=True, check=True)
     assert py == json.loads(out.stdout) == ["b", "a", None, None]
+
+
+def raaga_cand(**over):
+    rec = {"name": "Zzraga", "type": "janya", "parent": "Shankarabharanam", "arohana": "S R2 G3 P D2 S",
+           "avarohana": "S D2 P G3 R2 S", "moods": ["light_playful"]}
+    rec.update(over.pop("record", {}))
+    c = {"type": "addition", "kind": "raaga", "name": rec["name"], "record": rec, "sources": [SRC],
+         "evidence": "Zzraga: 29 dheera shankaraabharaNam janya Aa: S R2 G3 P D2 S",
+         "mood_evidence": [{"mood": "light_playful", "source": SRC, "quote": "a light, sprightly raaga for lilting songs",
+                            "about": "raaga", "needs_curator_confirmation": True}],
+         "details": "Grow the catalogue: a well-known raaga that's missing."}
+    c.update(over)
+    return c
+
+
+def test_new_raaga_and_its_song_in_one_run(cat):
+    song = cand(record={"title": "Zz Song In New Raaga", "raaga": "Zzraga", "moods": ["light_playful"]},
+                mood_evidence=[{**QUOTE, "mood": "light_playful"}])
+    # Song listed first: the raaga is still checked (and added) before it.
+    rep = run_check(cat, [song, raaga_cand()], {"items": []}, {"decisions": {}})
+    assert [r["ok"] for r in rep] == [True, True], rep
+    assert "waiting for review" in rep[1]["warnings"][-1]
+    box, _ = run_add(cat, [song, raaga_cand()], {"items": []}, {"decisions": {}}, "U", limit=10)
+    assert [x["kind"] for x in box["items"]] == ["raaga", "krithi"]
+
+
+def test_song_in_unknown_raaga_still_refused(cat):
+    rep = run_check(cat, [cand(record={"title": "Zz Orphan", "raaga": "Zzraga"})], {"items": []}, {"decisions": {}})
+    assert not rep[0]["ok"] and "suggest the raaga too" in rep[0]["problems"][0]
+
+
+def test_rejected_raaga_does_not_count(cat):
+    box, _ = run_add(cat, [raaga_cand()], {"items": []}, {"decisions": {}}, "U", limit=10)
+    dec = {"decisions": {box["items"][0]["id"]: {"status": "rejected"}}}
+    rep = run_check(cat, [cand(record={"title": "Zz Orphan", "raaga": "Zzraga"})], box, dec)
+    assert not rep[0]["ok"]
+
+
+def test_plan_splits_the_room_and_never_exceeds_it():
+    from carnatic.gaps import plan
+    assert plan(10) == {"gaps": 4, "new_krithis": 4, "new_raagas": 2}
+    for room in range(0, 11):
+        assert sum(plan(room).values()) == room

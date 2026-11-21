@@ -55,7 +55,7 @@ Out of scope for v1: audio raaga identification (planned v2 as a separate servic
   composer, language, tala, form, meaning for the mood) on its own, before showing it; it asks the user only about
   fields those sources don't state. Page suggest_addition returns `missing` to prompt this.
 - Background curator: `.claude/skills/curate-manoraga` (weekly scheduled task) + `carnatic/gaps.py` (deterministic gap
-  ranking, targets in curator/config.json) + `carnatic/curator.py` (check candidates; add to the page's suggestion box with
+  ranking + growth towards catalogue_targets, room split by run_mix in curator/config.json; new raagas and their songs allowed) + `carnatic/curator.py` (check candidates; add to the page's suggestion box with
   the page's own twin/merge rule). Its moods carry needs_curator_confirmation; the owner's Accept confirms them (page
   merged()). The chat agent's propose_addition strips that marker. The curator never edits data/ or approves.
 - Curation: one queue (proposals.db). The page's owner-only Review panel stores decisions in db `curation/decisions`
