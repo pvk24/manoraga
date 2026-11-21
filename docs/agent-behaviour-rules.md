@@ -77,7 +77,7 @@ This file is the main, readable copy of the rules. When a rule changes, update i
 
 ## 6. Quality gates
 - `pytest` (74 offline tests) after every change. It includes:
-  - a parity test: 225 identical tool calls through the Python and web versions must match exactly (the page's web-search and review code is page-only and sits outside the parity core);
+  - a parity test: 231 identical tool calls through the Python and web versions must match exactly (the page's web-search and review code is page-only and sits outside the parity core);
   - contract tests that run the page's review export through the Python importer, check "Add to catalogue" gives the same rows as Python approval, and replay a real duplicate sequence through both merge implementations;
   - checks that the committed `web/index.html` and the setup instructions are current.
 - `python -m evals.run_evals` (42 live evals) after any prompt or tool change. Compare per-category pass rates with the previous run in `evals/results/`.

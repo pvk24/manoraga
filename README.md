@@ -69,7 +69,7 @@ privately per signed-in viewer. Rebuild after any data change, then republish:
 ```bash
 python scripts/build_web.py     # writes web/index.html with the CSV catalogue embedded
 ```
-The JS port must match `carnatic/`: `pytest` includes a parity test (needs Node.js) that runs 225 identical
+The JS port must match `carnatic/`: `pytest` includes a parity test (needs Node.js) that runs 231 identical
 tool calls through both versions and fails on any difference.
 
 ## Corrections and new songs (curator flow)

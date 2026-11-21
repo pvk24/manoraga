@@ -77,7 +77,7 @@ Out of scope for v1: audio raaga identification (planned v2 as a separate servic
   .claude/skills/install-manoraga). After ANY change to `data/` or `web/template.html`, run `python scripts/build_web.py`
   and commit the result; tests/test_web_build.py fails if it is stale.
 - The web page (`web/template.html`) re-implements the core in JavaScript between `/*@core-begin` and
-  `/*@core-end*/`. `tests/test_parity.py` runs 230 identical tool calls through both and fails on any difference,
+  `/*@core-end*/`. `tests/test_parity.py` runs 231 identical tool calls through both and fails on any difference,
   so change ranking or matching logic in BOTH places. Keep those markers intact.
 - Run `pytest -q` after every change; run `python -m evals.run_evals` after prompt or tool changes and
   report the pass rate per category before/after (compare files in evals/results/). Never weaken a case or a
