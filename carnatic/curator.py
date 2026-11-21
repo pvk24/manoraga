@@ -100,7 +100,7 @@ def check_candidate(cat: Catalog, e: dict, items: list[dict], decisions: dict) -
         warnings.append("language not stated on the trusted sources: the curator fills it in when reviewing")
     srcs = e.get("sources") or []
     if not srcs or not all(trusted(u) for u in srcs):
-        problems.append("needs at least one source, all https pages on the four trusted sites")
+        problems.append("needs at least one source, all https pages on the trusted sites")
     if len(str(e.get("evidence") or "").strip()) < 20:
         problems.append("evidence must quote what the source page says")
     raaga, new_raaga = None, None

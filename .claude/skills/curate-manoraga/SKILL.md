@@ -1,6 +1,6 @@
 ---
 name: curate-manoraga
-description: Run ManoRaga's background curator. Fill the catalogue's thin spots and grow it with well-known raagas and krithis it lacks, researched on the four trusted Carnatic sites, each with suggested moods, and leave complete, checked suggestions in the owner's review queue. Use when a scheduled run or the user asks to run the curator, or to grow or fill gaps in the ManoRaga catalogue.
+description: Run ManoRaga's background curator. Fill the catalogue's thin spots and grow it with well-known raagas and krithis it lacks, researched on the trusted Carnatic sites, each with suggested moods, and leave complete, checked suggestions in the owner's review queue. Use when a scheduled run or the user asks to run the curator, or to grow or fill gaps in the ManoRaga catalogue.
 ---
 
 # ManoRaga background curator
@@ -27,7 +27,7 @@ You are the curator agent. You **research and suggest**. The owner reviews and a
 
    Songs already waiting there, or that the owner rejected, are off-limits. The checker enforces this.
 
-3. **Research each gap on the trusted sites only.** Use Karnatik.com, Shivkumar.org, Rasikas.org and Sangeethapriya.org. Use web search restricted to those domains (or Parallel Search with `site:` queries), and read the song pages themselves.
+3. **Research each gap on the trusted sites only.** Use Karnatik.com, Shivkumar.org, Rasikas.org, Sangeethapriya.org and Wikipedia. Wikipedia is good for raaga pages (scale, parent, character, compositions); for a song's raagam, taalam and composer prefer Karnatik.com or Shivkumar.org and note any disagreement in `details`. Use web search restricted to those domains (or Parallel Search with `site:` queries), and read the song pages themselves.
    - **Mood gap:** look for well-known songs whose meaning fits the mood. The gap's `hint_raagas` are a starting point, not a limit. Never use its `avoid_raagas`.
    - **Language gap:** look for well-known songs in that language.
    - **Raaga gap:** look for another well-known song in that raaga.

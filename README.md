@@ -33,7 +33,7 @@ cp .env.example .env                                   # Windows: copy .env.exam
 python cli.py --user yourname
 ```
 - Your taste profile is saved on your machine (`user_data.db`), never uploaded.
-- Web search of the four trusted sites is on by default (`CARNATIC_WEB_SEARCH=1`). It is enabled for API accounts
+- Web search of the trusted sites is on by default (`CARNATIC_WEB_SEARCH=1`). It is enabled for API accounts
   unless an admin turned it off, and costs $10 per 1,000 searches plus tokens. Set it to 0 for catalogue-only answers.
 - Songs the agent proposes go to *your* local queue: `python cli.py --user yourname --curator`, then `/proposals`.
   Approving them changes only your copy. To suggest a change to the shared catalogue, open a GitHub issue or pull
@@ -77,7 +77,7 @@ The agent can only **propose** catalogue changes; you approve them.
 
 - **Corrections** ("that's not upbeat, it's soothing"): applied to that user's suggestions at once, and queued for you.
 - **New songs/raagas** (Python agent): found by web search on Karnatik.com / Shivkumar.org / Rasikas.org /
-  Sangeethapriya.org, proposed with source URLs and quoted evidence, and queued for you. The agent also infers moods from
+  Sangeethapriya.org / Wikipedia, proposed with source URLs and quoted evidence, and queued for you. The agent also infers moods from
   the song's meaning on those pages and suggests them; the user confirms before they're proposed.
 - **Background curator:** once a week a scheduled Claude run finds where the catalogue is thin (`python -m carnatic.gaps --text`),
   researches fitting songs on the trusted sites, and leaves checked suggestions in your Review panel, marked "Found by the

@@ -9,7 +9,7 @@ Each case runs in a fresh agent with a throwaway taste profile. A case passes on
   expect_any_tool  at least one of these was called (e.g. web_search OR source_links)
   forbid_tools     none of these was called (e.g. record_feedback for a correction)
   must_include_*   keywords present (any / all); must_not_include: keywords absent
-  cite             the answer names a trusted source (Karnatik.com, Shivkumar.org, Rasikas.org, Sangeethapriya.org)
+  cite             the answer names a trusted source (Karnatik.com, Shivkumar.org, Rasikas.org, Sangeethapriya.org, Wikipedia)
   expect_profile   the saved taste profile contains what the user said
   rubric           an LLM grader judges the reply against a written rubric
   turns            multi-turn conversation; checks apply to the final reply
@@ -28,7 +28,7 @@ from pathlib import Path
 
 CASES = Path(__file__).with_name("cases.jsonl")
 RESULTS = Path(__file__).with_name("results")
-SOURCES_RE = re.compile(r"karnatik\.com|shivkumar\.org|rasikas\.org|sangeethapriya\.org", re.I)
+SOURCES_RE = re.compile(r"karnatik\.com|shivkumar\.org|rasikas\.org|sangeethapriya\.org|wikipedia\.org|wikipedia", re.I)
 
 GRADER_PROMPT = """You are grading one reply from a Carnatic music assistant against a rubric. Be strict and literal.
 

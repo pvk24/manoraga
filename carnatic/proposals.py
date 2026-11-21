@@ -20,7 +20,7 @@ import re
 from .catalog import DATA_DIR, Catalog, _norm
 
 DEFAULT_DB = Path(__file__).resolve().parent.parent / "proposals.db"
-TRUSTED = ("karnatik.com", "shivkumar.org", "rasikas.org", "sangeethapriya.org")
+TRUSTED = ("karnatik.com", "shivkumar.org", "rasikas.org", "sangeethapriya.org", "wikipedia.org")
 
 KRITHI_FIELDS = {"title", "raaga", "composer", "language", "tala", "form", "moods", "descriptors", "notes"}
 RAAGA_FIELDS = {"name", "aliases", "type", "melakarta_number", "parent", "arohana", "avarohana", "scale_note",

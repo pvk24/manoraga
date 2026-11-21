@@ -16,7 +16,8 @@ Out of scope for v1: audio raaga identification (planned v2 as a separate servic
   exclusion; `Catalog.validate` rejects a raaga that is both tagged and avoided for the same mood.
 - Every row has `sources` (semicolon-separated URLs). Reference sources, in order of trust for facts: Karnatik.com
   (scales, raagam/taalam/composer per song), Shivkumar.org (notation, taalam), Rasikas.org (expert discussion; use
-  for disputed points and concert practice). Sangeethapriya.org is an audio archive: good for listening links, not
+  for disputed points and concert practice), Wikipedia (credible for raaga background and composers; song-level facts defer to
+  Karnatik.com/Shivkumar.org). Sangeethapriya.org is an audio archive: good for listening links, not
   for text verification. When sources disagree, keep the reviewer's value and record the other view in `notes`.
 - `alternate_parents` records genuine disagreements between schools. Present the primary parent and mention the
   alternate rather than picking a side.
@@ -40,7 +41,7 @@ Out of scope for v1: audio raaga identification (planned v2 as a separate servic
   taste profile. Anything else is declined in 1-2 friendly sentences with a redirect. People in distress get care,
   never a refusal. Borderline-but-relevant questions (Hindustani counterparts, learning, occasions) are answered.
 - Grounding policy (owner's rule): never state an assumption as a fact. Facts come from the catalogue, then a web
-  search restricted to Karnatik.com / Shivkumar.org / Rasikas.org / Sangeethapriya.org (Python agent: Anthropic
+  search restricted to Karnatik.com / Shivkumar.org / Rasikas.org / Sangeethapriya.org / Wikipedia (Python agent: Anthropic
   web_search; web page: the viewer's Parallel Search connector, page tools web_search_trusted / web_fetch_trusted,
   which drop non-trusted domains in code and live outside the parity core), else the agent says it couldn't verify and gives source_links. Never guess.
 - Moods of new songs (owner's rule): the agent infers them from what the trusted page says about the song (meaning,

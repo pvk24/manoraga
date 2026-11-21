@@ -33,7 +33,7 @@ def test_web_search_is_limited_to_trusted_sources(tmp_path, monkeypatch):
     tools = a.client.messages.calls[0]["tools"]
     ws = [t for t in tools if t.get("type", "").startswith("web_search")]
     assert len(ws) == 1
-    assert set(ws[0]["allowed_domains"]) == {"karnatik.com", "shivkumar.org", "rasikas.org", "sangeethapriya.org"}
+    assert set(ws[0]["allowed_domains"]) == {"karnatik.com", "shivkumar.org", "rasikas.org", "sangeethapriya.org", "wikipedia.org"}
 
 
 def test_catalogue_only_mode_has_no_web_search(tmp_path, monkeypatch):

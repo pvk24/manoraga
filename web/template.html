@@ -196,7 +196,7 @@ function krithisFor({raaga, composer, title} = {}) {
 }
 
 /* ---------- catalogue changes approved in the page (mirror ProposalStore validation + _apply in carnatic/proposals.py) ---------- */
-const TRUSTED_SITES = ['karnatik.com', 'shivkumar.org', 'rasikas.org', 'sangeethapriya.org'];
+const TRUSTED_SITES = ['karnatik.com', 'shivkumar.org', 'rasikas.org', 'sangeethapriya.org', 'wikipedia.org'];
 const trustedUrl = u => { try { const x = new URL(u), h = x.hostname.toLowerCase(); return x.protocol === 'https:' && TRUSTED_SITES.some(d => h === d || h.endsWith('.' + d)); } catch (e) { return false; } };
 const CORRECTABLE = {krithi: ['raaga', 'composer', 'language', 'tala', 'moods'], raaga: ['arohana', 'avarohana', 'parent', 'melakarta_number', 'moods']};
 function moodBasis(e) { return e.source === 'user' || e.source === 'curator' ? e.source : 'inferred from ' + e.source + (e.confirmed_by === 'curator' ? ', found by the curator agent, confirmed by the curator' : ', user-confirmed') + (e.about === 'raaga' ? ', raaga-level' : ''); }
@@ -514,13 +514,14 @@ function sourceLinks(query) {
   const q = encodeURIComponent(String(query).trim()).replace(/[!'()*]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase()).replace(/%20/g, '+');
   const g = site => `https://www.google.com/search?q=site%3A${site}+${q}`;
   return [{site: 'Karnatik.com', url: g('karnatik.com')}, {site: 'Shivkumar.org', url: g('shivkumar.org')},
-          {site: 'Rasikas.org', url: `https://www.rasikas.org/forums/search.php?keywords=${q}`}, {site: 'Sangeethapriya.org', url: g('sangeethapriya.org')}];
+          {site: 'Rasikas.org', url: `https://www.rasikas.org/forums/search.php?keywords=${q}`}, {site: 'Sangeethapriya.org', url: g('sangeethapriya.org')},
+          {site: 'Wikipedia', url: `https://en.wikipedia.org/w/index.php?search=${q}`}];
 }
-const TRUSTED = ['karnatik.com', 'shivkumar.org', 'rasikas.org', 'sangeethapriya.org'];
+const TRUSTED = ['karnatik.com', 'shivkumar.org', 'rasikas.org', 'sangeethapriya.org', 'wikipedia.org'];
 const isTrusted = u => { try { const h = new URL(u).hostname.toLowerCase().replace(/^www\./, ''); return new URL(u).protocol === 'https:' && TRUSTED.some(d => h === d || h.endsWith('.' + d)); } catch (e) { return false; } };
 const webOn = () => typeof WEB !== 'undefined' && WEB.on;
 const webLine = () => webOn()
-  ? `- If the catalogue doesn't have it, or you are unsure: call web_search_trusted, which searches only Karnatik.com, Shivkumar.org, Rasikas.org and Sangeethapriya.org. Use web_fetch_trusted to read one of those pages when the excerpt isn't enough. State only what the page actually says, and link it: "Source: [Shivkumar.org](url)". Label anything found this way "from <site>, not yet in my catalogue". If the sources disagree, say so and give both.
+  ? `- If the catalogue doesn't have it, or you are unsure: call web_search_trusted, which searches only Karnatik.com, Shivkumar.org, Rasikas.org, Sangeethapriya.org and Wikipedia. Use web_fetch_trusted to read one of those pages when the excerpt isn't enough. State only what the page actually says, and link it: "Source: [Shivkumar.org](url)". Label anything found this way "from <site>, not yet in my catalogue". If the sources disagree, say so and give both.
 - If the trusted sites don't settle it either, or the web tools report a problem: say plainly that you couldn't verify it and what is unclear, then give source_links. Never fill gaps from memory, even with a caveat.`
   : `- Web search isn't available in this view. If the catalogue doesn't have it, or you are unsure: say plainly that you couldn't verify it here and what is unclear, then call source_links and give the user those links so they can check. Do not guess, and do not fill gaps from memory, even with a caveat.`;
 const TOOLS = [
@@ -557,7 +558,7 @@ const TOOLS = [
   {name: 'record_feedback', description: "Save a like or dislike the user expressed about a raaga, krithi or composer (e.g. 'loved that one', 'Thodi is too heavy for me'). Call whenever taste is expressed.",
    inputSchema: {type: 'object', properties: {item_type: {type: 'string', enum: ['raaga', 'krithi', 'composer']}, item_name: {type: 'string'}, signal: {type: 'integer', enum: [1, -1]}, note: {type: 'string'}}, required: ['item_type', 'item_name', 'signal']},
    execute: ({item_type, item_name, signal, note}) => { record(item_type, item_name, signal, note || ''); return {ok: true}; }},
-  {name: 'source_links', description: 'Get search links for a raaga, krithi or question on the trusted sources (Karnatik.com, Shivkumar.org, Rasikas.org, Sangeethapriya.org). Use when you cannot verify a fact, so the user can check it themselves.',
+  {name: 'source_links', description: 'Get search links for a raaga, krithi or question on the trusted sources (Karnatik.com, Shivkumar.org, Rasikas.org, Sangeethapriya.org, Wikipedia). Use when you cannot verify a fact, so the user can check it themselves.',
    inputSchema: {type: 'object', properties: {query: {type: 'string'}}, required: ['query']},
    execute: ({query}) => ({query, links: sourceLinks(query || '')})},
   {name: 'set_preference', description: 'Save an explicit user setting. Allowed keys: ' + JSON.stringify(PREFS),
@@ -622,7 +623,7 @@ ${JSON.stringify(derived())}`;
 /* ---------- web search on the trusted sites, through the viewer's Parallel Search connector ---------- */
 const WEB = {on: false, mcp: null, session: 'manoraga-' + Math.random().toString(36).slice(2) + Date.now().toString(36)};
 const PS = 'Parallel Search';
-const SITES = {'karnatik.com': 'Karnatik.com', 'shivkumar.org': 'Shivkumar.org', 'rasikas.org': 'Rasikas.org', 'sangeethapriya.org': 'Sangeethapriya.org'};
+const SITES = {'karnatik.com': 'Karnatik.com', 'shivkumar.org': 'Shivkumar.org', 'rasikas.org': 'Rasikas.org', 'sangeethapriya.org': 'Sangeethapriya.org', 'wikipedia.org': 'Wikipedia'};
 const siteOf = u => { try { const h = new URL(u).hostname.replace(/^www\./, ''); return SITES[Object.keys(SITES).find(d => h === d || h.endsWith('.' + d))] || h; } catch (e) { return ''; } };
 const clip = (t, n) => { t = String(t || '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n) + '…' : t; };
 const WEB_FIX = {
@@ -646,21 +647,21 @@ async function webCall(tool, input) {
   }
 }
 const WEB_TOOLS = [
-  {name: 'web_search_trusted', description: 'Search ONLY the trusted Carnatic sources (Karnatik.com, Shivkumar.org, Rasikas.org, Sangeethapriya.org) for a song, raaga, composer or fact that the catalogue lacks or you are unsure of. Returns titles, URLs and excerpts from those sites only. State only what the excerpts say.',
+  {name: 'web_search_trusted', description: 'Search ONLY the trusted Carnatic sources (Karnatik.com, Shivkumar.org, Rasikas.org, Sangeethapriya.org, Wikipedia) for a song, raaga, composer or fact that the catalogue lacks or you are unsure of. Returns titles, URLs and excerpts from those sites only. State only what the excerpts say.',
    inputSchema: {type: 'object', properties: {query: {type: 'string', description: "Short search, e.g. 'bhajare re manasa raaga tala'"}, question: {type: 'string', description: 'What you need to find out, in one sentence'}}, required: ['query']},
    execute: async ({query, question}) => {
      const q = String(query || '').trim(); if (!q) return {error: 'empty query'};
-     const r = await webCall('web_search', {objective: `${question || q}. Carnatic music. Use only karnatik.com, shivkumar.org, rasikas.org or sangeethapriya.org.`,
+     const r = await webCall('web_search', {objective: `${question || q}. Carnatic music. Use only karnatik.com, shivkumar.org, rasikas.org, sangeethapriya.org or wikipedia.org.`,
        search_queries: Object.keys(SITES).map(d => `site:${d} ${q}`), session_id: WEB.session});
      if (r.error) return r;
      const all = ((r.payload || {}).results || []), keep = all.filter(x => isTrusted(x.url)).slice(0, 6);
      const res = {query: q, results: keep.map(x => ({site: siteOf(x.url), url: x.url, title: clip(x.title, 150), excerpt: clip((x.excerpts || []).join(' … '), 1800)})), untrusted_results_dropped: all.length - keep.length};
      if (!keep.length) res.note = 'Nothing on the trusted sites. Say you could not verify it and give source_links.';
      return res; }},
-  {name: 'web_fetch_trusted', description: 'Read one page from a trusted Carnatic site (Karnatik.com, Shivkumar.org, Rasikas.org, Sangeethapriya.org) when a search excerpt is not enough, e.g. to confirm the raaga, tala, composer or language of a song.',
+  {name: 'web_fetch_trusted', description: 'Read one page from a trusted Carnatic site (Karnatik.com, Shivkumar.org, Rasikas.org, Sangeethapriya.org, Wikipedia) when a search excerpt is not enough, e.g. to confirm the raaga, tala, composer or language of a song.',
    inputSchema: {type: 'object', properties: {url: {type: 'string'}, question: {type: 'string', description: 'What to look for on the page'}}, required: ['url', 'question']},
    execute: async ({url, question}) => {
-     if (!isTrusted(url)) return {error: 'not a trusted site', fix: 'Only karnatik.com, shivkumar.org, rasikas.org and sangeethapriya.org pages can be read.'};
+     if (!isTrusted(url)) return {error: 'not a trusted site', fix: 'Only karnatik.com, shivkumar.org, rasikas.org, sangeethapriya.org and wikipedia.org pages can be read.'};
      const r = await webCall('web_fetch', {urls: [url], objective: question || 'Raagam, taalam, composer and language', session_id: WEB.session});
      if (r.error) return r;
      const x = ((r.payload || {}).results || [])[0];

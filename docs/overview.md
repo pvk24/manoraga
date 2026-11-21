@@ -32,7 +32,7 @@ ManoRaga is a Carnatic music companion. It explains the music in plain words, su
 
 **Where facts come from, in order:**
 1. the catalogue;
-2. a web search limited to Karnatik.com, Shivkumar.org, Rasikas.org and Sangeethapriya.org (results from any other site are dropped in code);
+2. a web search limited to Karnatik.com, Shivkumar.org, Rasikas.org, Sangeethapriya.org and Wikipedia (results from any other site are dropped in code);
 3. otherwise "I couldn't verify this", with links to check.
 
 **How a suggestion is made:**

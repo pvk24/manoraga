@@ -165,3 +165,12 @@ def test_plan_splits_the_room_and_never_exceeds_it():
     assert plan(10) == {"gaps": 4, "new_krithis": 4, "new_raagas": 2}
     for room in range(0, 11):
         assert sum(plan(room).values()) == room
+
+
+def test_wikipedia_is_a_trusted_source(cat):
+    from carnatic.proposals import trusted
+    assert trusted("https://en.wikipedia.org/wiki/Mohanam") and not trusted("http://en.wikipedia.org/wiki/Mohanam")
+    assert not trusted("https://wikipedia.org.evil.com/x")
+    c = cand(sources=["https://en.wikipedia.org/wiki/Neelambari"],
+             mood_evidence=[{**QUOTE, "source": "https://en.wikipedia.org/wiki/Neelambari"}])
+    assert run_check(cat, [c], {"items": []}, {"decisions": {}})[0]["ok"]

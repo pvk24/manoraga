@@ -8,7 +8,7 @@ import json
 from typing import Any
 from urllib.parse import quote_plus
 
-TRUSTED_SOURCES = ["karnatik.com", "shivkumar.org", "rasikas.org", "sangeethapriya.org"]
+TRUSTED_SOURCES = ["karnatik.com", "shivkumar.org", "rasikas.org", "sangeethapriya.org", "wikipedia.org"]
 
 
 def source_links(query: str) -> list[dict]:
@@ -20,6 +20,7 @@ def source_links(query: str) -> list[dict]:
         {"site": "Shivkumar.org", "url": g("shivkumar.org")},
         {"site": "Rasikas.org", "url": f"https://www.rasikas.org/forums/search.php?keywords={q}"},
         {"site": "Sangeethapriya.org", "url": g("sangeethapriya.org")},
+        {"site": "Wikipedia", "url": f"https://en.wikipedia.org/w/index.php?search={q}"},
     ]
 
 from .catalog import Catalog
@@ -117,7 +118,7 @@ class Toolbox:
             {
                 "name": "propose_addition",
                 "description": "Propose adding a krithi or raaga you found and VERIFIED on a trusted source page "
-                               "(Karnatik.com, Shivkumar.org, Rasikas.org, Sangeethapriya.org). Use the source's values "
+                               "(Karnatik.com, Shivkumar.org, Rasikas.org, Sangeethapriya.org, Wikipedia). Use the source's values "
                                "only; never guess a field. The curator must approve before it enters the catalogue: "
                                "tell the user the proposal id. A krithi whose raaga is missing needs the raaga proposed first.",
                 "input_schema": {
@@ -146,7 +147,7 @@ class Toolbox:
             {
                 "name": "source_links",
                 "description": "Get search links for a raaga, krithi or question on the trusted sources (Karnatik.com, "
-                               "Shivkumar.org, Rasikas.org, Sangeethapriya.org). Use when you cannot verify a fact, "
+                               "Shivkumar.org, Rasikas.org, Sangeethapriya.org, Wikipedia). Use when you cannot verify a fact, "
                                "so the user can check it themselves.",
                 "input_schema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
             },
