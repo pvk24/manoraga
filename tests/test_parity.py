@@ -49,11 +49,12 @@ PROFILES = [
 ]
 
 LOOKUPS = ["Sankarabharanam", "dheerasankarabharanam", "Todi", "Hamsadhvani", "kamboji", "Naata", "Kadanakuthuhala",
-           "Hamsanada", "Bhairavi", "Shanmugapriya", "Mohana", "Kalyan", "Sindhu bhairavi", "Zorbulu", "Varamu"]
+           "Hamsanada", "Bhairavi", "Shanmugapriya", "Mohana", "Kalyan", "Sindhu bhairavi", "Zorbulu", "Varamu",
+           "Ragamalika", "Raagamaalika"]
 SEARCHES = [{"title": t} for t in ["vatapi", "Vathapi Ganapathim", "Endaromahanubhavulu", "Nagumomu", "Marivere",
                                    "Rama nee samana", "Bantu reeti", "zzz",
                                    "Marivere Dikkevvaru", "Marivere Dikkevarayya", "Sri Valli", "Endaro Mahanubhavalu"]] + \
-           [{"raaga": r} for r in ["Kalyani", "Nattai", "Todi", "Sankarabharanam", "Nowhere"]] + \
+           [{"raaga": r} for r in ["Kalyani", "Nattai", "Todi", "Sankarabharanam", "Nowhere", "ragamalika"]] + \
            [{"composer": c} for c in ["Dikshitar", "Syama Sastri", "Purandara", "Swathi"]] + \
            [{"raaga": "Kharaharapriya", "composer": "Tyagaraja"}, {"raaga": "Kambhoji", "title": "Rangasayee"}]
 

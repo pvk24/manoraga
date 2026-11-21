@@ -17,7 +17,7 @@ from urllib.parse import urlparse
 
 import re
 
-from .catalog import DATA_DIR, Catalog, _norm
+from .catalog import DATA_DIR, RAGAMALIKA, Catalog, _norm, is_ragamalika
 
 DEFAULT_DB = Path(__file__).resolve().parent.parent / "proposals.db"
 TRUSTED = ("karnatik.com", "shivkumar.org", "rasikas.org", "sangeethapriya.org", "wikipedia.org")
@@ -170,7 +170,9 @@ class ProposalStore:
             if any(k.title.lower() == record["title"].strip().lower() for k in cat.krithis):
                 return {"error": f"'{record['title']}' is already in the catalogue"}
             r = cat.resolve_raaga(record["raaga"])
-            if not r:
+            if not r and is_ragamalika(record["raaga"]):
+                record = {**record, "raaga": RAGAMALIKA}    # not a raaga row; the song's notes name its raagas
+            elif not r:
                 pending = [p for p in self.list("pending") if p["kind"] == "add_raaga"
                            and p["payload"]["record"]["name"].lower() == record["raaga"].strip().lower()]
                 if not pending:
@@ -178,6 +180,8 @@ class ProposalStore:
             else:
                 record = {**record, "raaga": r.name}
         else:
+            if is_ragamalika(record.get("name", "")):
+                return {"error": "Ragamalika is a garland of raagas, not one raaga: add the song with raaga 'Ragamalika' and its raagas in notes"}
             missing = [f for f in ("name", "type", "arohana", "avarohana") if not str(record.get(f, "")).strip()]
             if missing:
                 return {"error": f"missing {missing}; use the source's values, never guess"}

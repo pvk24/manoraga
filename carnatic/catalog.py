@@ -12,6 +12,17 @@ from pathlib import Path
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 
+# Owner's rule (21 Nov 2026): "Ragamalika" is not a raaga but a garland of raagas, different in every song. It has no
+# row in raagas.csv; a krithi may still name it as its raaga, with its raagas listed in the song's notes.
+RAGAMALIKA = "Ragamalika"
+RAGAMALIKA_NOTE = "Not one raaga: a garland of raagas, one per section. The song's notes name its raagas."
+
+
+def is_ragamalika(name: str) -> bool:
+    """Must match isRagamalika() in web/template.html."""
+    return _norm(name or "") == "ragamalika"
+
+
 def _norm(s: str) -> str:
     """Normalise names for matching: lowercase, strip spaces/punctuation, fold common spelling variants."""
     s = s.lower()
@@ -155,7 +166,11 @@ class Catalog:
         """Fail fast on dangling references so bad data never reaches the agent."""
         errors = []
         for k in self.krithis:
-            if k.raaga not in self.raagas:
+            if k.raaga == RAGAMALIKA:
+                continue
+            if is_ragamalika(k.raaga):
+                errors.append(f"krithi '{k.title}': write ragamalika as '{RAGAMALIKA}'")
+            elif k.raaga not in self.raagas:
                 errors.append(f"krithi '{k.title}' references unknown raaga '{k.raaga}'")
         for k in self.krithis:
             for m in k.moods + k.avoid_moods:
@@ -165,6 +180,8 @@ class Catalog:
                 errors.append(f"krithi '{k.title}' is both tagged and avoided for the same mood")
             if k.raaga in self.raagas and set(k.moods) & set(self.raagas[k.raaga].avoid_moods):
                 errors.append(f"krithi '{k.title}' is tagged with a mood its raaga '{k.raaga}' avoids — resolve explicitly")
+        if any(is_ragamalika(r.name) for r in self.raagas.values()):
+            errors.append("raagas.csv must not have a Ragamalika row: it is a garland of raagas, not one raaga")
         for r in self.raagas.values():
             for m in r.moods + r.avoid_moods:
                 if m not in self.moods:
@@ -219,9 +236,10 @@ class Catalog:
         out = self.krithis
         if raaga:
             r = self.resolve_raaga(raaga)
-            if not r:
+            name = r.name if r else RAGAMALIKA if is_ragamalika(raaga) else None
+            if not name:
                 return []
-            out = [k for k in out if k.raaga == r.name]
+            out = [k for k in out if k.raaga == name]
         if composer:
             c = _norm(composer)
             out = [k for k in out if c in _norm(k.composer)]

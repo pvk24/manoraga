@@ -269,3 +269,17 @@ def test_similar_titles_explain_mixups(tmp_path):
     assert r["krithis"][0]["raaga"] == "Lathangi"
     sim = {s["title"]: s["raaga"] for s in r["similar_titles"]}
     assert sim.get("Marivere Dikkevarayya") == "Shanmukhapriya"
+
+
+def test_ragamalika_is_a_song_raaga_not_a_catalogue_row():
+    """Owner's rule (21 Nov 2026): no Ragamalika row in raagas.csv; its songs still work."""
+    from carnatic.catalog import RAGAMALIKA, is_ragamalika
+    cat = Catalog.load()
+    assert not any(is_ragamalika(r) for r in cat.raagas)
+    assert any(k.title == "Kurai Onrum Illai" and k.raaga == RAGAMALIKA for k in cat.krithis)
+    tb = Toolbox(cat, ProfileStore(":memory:"), "u")
+    look = tb.run("lookup_raaga", {"name": "raagamaalika"})
+    assert look["found"] is False and look["ragamalika"] and "Kurai Onrum Illai" in look["krithis_in_catalogue"]
+    rec = tb.run("recommend", {"moods": ["fresh_morning"], "limit": 10})
+    groups = rec["recommendations"] if isinstance(rec, dict) and "recommendations" in rec else rec
+    assert any(g["raaga"] == RAGAMALIKA and g["krithis"][0]["title"] == "Kurai Onrum Illai" for g in groups)

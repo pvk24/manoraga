@@ -28,7 +28,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from .catalog import DATA_DIR, Catalog, _norm
+from .catalog import DATA_DIR, RAGAMALIKA, Catalog, _norm, is_ragamalika
 from .proposals import KRITHI_FIELDS, RAAGA_FIELDS, ProposalStore, _base_title, _filled, _paren, merge_addition, trusted
 
 AGENT = "curator-agent"
@@ -108,6 +108,10 @@ def check_candidate(cat: Catalog, e: dict, items: list[dict], decisions: dict) -
         raaga = cat.resolve_raaga(rec["raaga"])
         if raaga:
             rec["raaga"] = raaga.name
+        elif is_ragamalika(rec["raaga"]):
+            rec["raaga"] = RAGAMALIKA
+            if not _filled(rec.get("notes")):
+                problems.append("a ragamalika song needs its raagas in notes, from the trusted page")
         else:
             # A raaga suggested in this run (listed before its songs) or already waiting for review is fine:
             # the owner adds the raaga first, then its songs.

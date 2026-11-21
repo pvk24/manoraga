@@ -5,9 +5,7 @@
   "songs_per_raaga": 2,
   "max_suggestions_per_run": 10,
   "max_gaps_per_run": 3,
-  "skip_raagas": [
-    "Ragamalika"
-  ],
+  "skip_raagas": [],
   "catalogue_targets": {
     "raagas": 400,
     "krithis": 1000

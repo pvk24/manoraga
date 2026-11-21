@@ -164,6 +164,8 @@ const ICON = {
 
 /*@core-begin: catalogue, profile and tools. Must behave exactly like carnatic/*.py (tests/test_parity.py) */
 /* ---------- catalogue (port of carnatic/catalog.py) ---------- */
+const RAGAMALIKA = 'Ragamalika', RAGAMALIKA_NOTE = "Not one raaga: a garland of raagas, one per section. The song's notes name its raagas.";
+const isRagamalika = n => norm(n) === 'ragamalika';   // mirror is_ragamalika in carnatic/catalog.py
 const norm = s => { s = String(s || '').toLowerCase().replace(/[^a-z]/g, ''); for (const [a, b] of [['dh','d'],['th','t'],['bh','b'],['kh','k'],['sh','s'],['aa','a'],['ee','i'],['oo','u'],['v','w']]) s = s.split(a).join(b); return s; };
 const lev = (a, b) => { const d = Array.from({length: b.length + 1}, (_, i) => i); for (let i = 1; i <= a.length; i++) { let prev = d[0]; d[0] = i; for (let j = 1; j <= b.length; j++) { const t = d[j]; d[j] = Math.min(d[j] + 1, d[j-1] + 1, prev + (a[i-1] === b[j-1] ? 0 : 1)); prev = t; } } return d[b.length]; };
 const ratio = (a, b) => { const m = Math.max(a.length, b.length); return m ? 1 - lev(a, b) / m : 1; };
@@ -189,7 +191,7 @@ function similarTitles(title, exclude) {
 }
 function krithisFor({raaga, composer, title} = {}) {
   let out = CAT.krithis;
-  if (raaga) { const r = resolveRaaga(raaga); if (!r) return []; out = out.filter(k => k.raaga === r.name); }
+  if (raaga) { const r = resolveRaaga(raaga), name = r ? r.name : isRagamalika(raaga) ? RAGAMALIKA : null; if (!name) return []; out = out.filter(k => k.raaga === name); }
   if (composer) { const c = norm(composer); out = out.filter(k => norm(k.composer).includes(c)); }
   if (title) { const t = norm(title); const ex = out.filter(k => norm(k.title).includes(t)); out = ex.length ? ex : out.map(k => [ratio(t, norm(k.title)), k]).filter(x => x[0] >= 0.75).sort((a, b) => b[0] - a[0]).slice(0, 3).map(x => x[1]); }
   return out;
@@ -211,7 +213,8 @@ function checkChange(it) {
     if (String(it.evidence || '').trim().length < 20) return 'needs evidence quoted from the source';
     if (kr && CAT.krithis.some(k => lc(k.title) === lc(rec.title))) return `'${rec.title}' is already in the catalogue`;
     if (!kr && CAT.raagas.some(r => lc(r.name) === lc(rec.name))) return `raaga '${rec.name}' is already in the catalogue`;
-    const raaga = kr ? CAT.raagas.find(r => lc(r.name) === lc(rec.raaga)) : null;
+    if (!kr && isRagamalika(rec.name)) return "Ragamalika is a garland of raagas, not one raaga: add the song with raaga 'Ragamalika'";
+    const raaga = kr ? (isRagamalika(rec.raaga) ? {name: RAGAMALIKA, avoid_moods: []} : CAT.raagas.find(r => lc(r.name) === lc(rec.raaga))) : null;
     if (kr && !raaga) return `raaga '${rec.raaga}' is not in the catalogue: add the raaga first`;
     for (const m of rec.moods || []) {
       if (!MOODS[m]) return 'unknown mood ' + m;
@@ -245,7 +248,7 @@ function applyChange(it, when) {
     const notes = [rec.notes || '', mev.length ? 'Moods from: ' + [...new Set(mev.map(e => `${e.mood} (${moodBasis(e)})`))].join('; ') : '', stamp].filter(Boolean).join('; ');
     const sources = [...it.sources, ...mev.map(e => e.source).filter(u => trustedUrl(u) && !it.sources.includes(u))];
     if (it.kind !== 'raaga') {
-      CAT.krithis.push({title: rec.title.trim(), raaga: CAT.raagas.find(r => lc(r.name) === lc(rec.raaga)).name, composer: rec.composer || '', language: rec.language || '', tala: rec.tala || '',
+      CAT.krithis.push({title: rec.title.trim(), raaga: isRagamalika(rec.raaga) ? RAGAMALIKA : CAT.raagas.find(r => lc(r.name) === lc(rec.raaga)).name, composer: rec.composer || '', language: rec.language || '', tala: rec.tala || '',
         form: rec.form || 'krithi', moods: [...(rec.moods || [])], avoid_moods: [], descriptors: rec.descriptors || '', notes, sources, verified: true});   // the owner accepted it: verified
     } else {
       const split = v => Array.isArray(v) ? v : String(v || '').split(';').map(x => x.trim()).filter(Boolean);
@@ -461,7 +464,7 @@ function rankMoods(moods, guard, limit, lang) {
     return [base.filter(m => !o.remove.includes(m)).concat(o.add.filter(m => !base.includes(m))), avoid.concat(o.remove.filter(m => !avoid.includes(m)))]; };
   const likedR = lo(p.likes.raaga), dislikedR = lo(p.dislikes.raaga), likedK = lo(p.likes.krithi), dislikedK = lo(p.dislikes.krithi);
   const likedC = [...lo([...p.likes.composer, ...[].concat(p.preferences.favourite_composers || [])])], dislikedC = lo(p.dislikes.composer), langs = lo([].concat(p.preferences.languages || []));
-  const R = Object.fromEntries(CAT.raagas.map(r => [r.name, eff('raaga', r.name, r.moods, r.avoid_moods)]));
+  const R = Object.fromEntries(CAT.raagas.map(r => [r.name, eff('raaga', r.name, r.moods, r.avoid_moods)])); R[RAGAMALIKA] = [[], []];
   const K = Object.fromEntries(CAT.krithis.map(k => [k.title, eff('krithi', k.title, k.moods, k.avoid_moods)]));
   const scores = {}, reasons = {}, add = (r, v, why) => { scores[r] = (scores[r] || 0) + v; (reasons[r] = reasons[r] || []).push(why); };
   for (const m of moods) for (const r of CAT.raagas) { const [tags, avoid] = R[r.name]; if (tags.includes(m) && !avoid.includes(m)) { const i = tags.indexOf(m); add(r.name, i === 0 ? 3 : i === 1 ? 2 : 1, `${i === 0 ? 'primary' : i === 1 ? 'secondary' : 'also'} fit for '${MOODS[m].label}'`); } }
@@ -471,7 +474,7 @@ function rankMoods(moods, guard, limit, lang) {
   for (const [r, [b, why]] of Object.entries(sb)) add(r, b, why);
   for (const r in scores) { const g = [...guard].filter(m => R[r][0].includes(m)).sort(); if (g.length) { scores[r] += 3; reasons[r].push("raaga itself suits '" + g.map(m => MOODS[m].label).join('/') + "'"); } if (likedR.has(r.toLowerCase())) { scores[r] += 2; reasons[r].push('you liked this raaga before'); } if (dislikedR.has(r.toLowerCase())) { scores[r] -= 5; reasons[r].push('you disliked this raaga (deprioritised)'); } }
   const out = [];
-  for (const r of Object.keys(scores).sort((a, b) => scores[b] - scores[a] || ORD[a] - ORD[b])) {
+  for (const r of Object.keys(scores).sort((a, b) => scores[b] - scores[a] || (ORD[a] ?? CAT.raagas.length) - (ORD[b] ?? CAT.raagas.length))) {
     if (scores[r] <= 0 || R[r][1].some(m => guard.has(m))) continue;
     const ks = [];
     for (const k of CAT.krithis) {
@@ -490,7 +493,7 @@ function rankMoods(moods, guard, limit, lang) {
     }
     if (!ks.length) continue;                                  // no fitting song: don't suggest the raaga
     ks.sort((a, b) => b[0] - a[0]);
-    out.push({raaga: r, why: reasons[r], raaga_notes: RA[r].notes, krithis: ks.slice(0, 2).map(([, k]) => ({title: k.title, composer: k.composer || 'unknown', language: k.language, tala: k.tala, character: k.descriptors}))});
+    out.push({raaga: r, why: reasons[r], raaga_notes: RA[r] ? RA[r].notes : RAGAMALIKA_NOTE, krithis: ks.slice(0, 2).map(([, k]) => ({title: k.title, composer: k.composer || 'unknown', language: k.language, tala: k.tala, character: k.descriptors}))});
     if (out.length >= limit) break;
   }
   return out;
@@ -527,7 +530,8 @@ const webLine = () => webOn()
 const TOOLS = [
   {name: 'lookup_raaga', description: 'Get catalogue facts about a raaga: scale (arohana/avarohana), parent melakarta and alternates, foreign notes, mood tags, notes, krithis. Use for ANY factual claim about a specific raaga. Handles spelling variants.',
    inputSchema: {type: 'object', properties: {name: {type: 'string'}}, required: ['name']},
-   execute: ({name}) => { const r = resolveRaaga(name); if (!r) return {found: false, message: `'${name}' is not in the catalogue.`};
+   execute: ({name}) => { const r = resolveRaaga(name); if (!r && isRagamalika(name)) return {found: false, ragamalika: true, message: RAGAMALIKA_NOTE, krithis_in_catalogue: krithisFor({raaga: RAGAMALIKA}).map(k => k.title)};
+     if (!r) return {found: false, message: `'${name}' is not in the catalogue.`};
      return {found: true, raaga: {...r, caveat: r.verified ? undefined : 'Scale/parent not yet expert-verified.', krithis_in_catalogue: krithisFor({raaga: r.name}).map(k => k.title)}}; }},
   {name: 'search_krithis', description: "Find krithis (songs) in the catalogue by raaga, composer and/or title. Use to answer 'which raaga is song X in', 'songs by Y', 'songs in raaga Z'.",
    inputSchema: {type: 'object', properties: {raaga: {type: 'string'}, composer: {type: 'string'}, title: {type: 'string'}}},

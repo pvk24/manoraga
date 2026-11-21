@@ -36,6 +36,7 @@ You are the curator agent. You **research and suggest**. The owner reviews and a
      - Fill `name`, `type` (melakarta or janya), `melakarta_number` (melakarta) or `parent` (janya: must be a catalogue raaga), `arohana` and `avarohana` in the catalogue's notation (S R1 R2 G2 ...), from the trusted page. Add `aliases` for other spellings on the page.
      - Moods: infer 1–2 from how the trusted page describes the raaga (character, rasa, the songs and occasions it's used for), `about: "raaga"`, marked `needs_curator_confirmation: true`. Never from memory: no description on a trusted page, no mood, so leave the raaga out.
      - Suggest a well-known song in the new raaga too when you can (it counts as a new krithi). The checker accepts a song whose raaga is suggested in the same run or is waiting for review, and puts the raaga first; the owner adds the raaga before its songs.
+   - **Ragamalika songs:** give the raaga as `Ragamalika` (never suggest Ragamalika as a raaga) and list the song's raagas in `notes`, from the trusted page.
    - **A song in a raaga that's neither in the catalogue nor suggested** is refused. Suggest the raaga, or leave the song out and mention it in your report.
    - **Fill every field from the page itself:** title, raaga, composer, tala, form, and language if the page states it.
      - Never fill a field from memory or by inference. Leave the language empty if no trusted page states it; the owner fills it in.

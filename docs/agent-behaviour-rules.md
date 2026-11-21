@@ -70,8 +70,8 @@ This file is the main, readable copy of the rules. When a rule changes, update i
   - Manasuloni stays under Hindolam (Karnatik.com/Shivkumar.org file it under Varamu); Emi Jesite is Misra Chapu; Venkatachala Nilayam is Sanskrit.
   - Morning songs tagged fresh_morning: Sriman Narayana (Bowli), Vatapi Ganapatim (suits morning and evening), Sadhu Vibhatam (Bhupalam), Manasa Etulorthune (Malayamarutham), Kurai Onrum Illai (Ragamalika).
   - Sriman Narayana is Sanskrit (Karnatik.com lists Telugu). Sadhu Vibhatam is a pada varnam in Sanskrit. Bhupalam's parent is 8 Hanumatodi (some references give 45 Shubhapantuvarali).
-  - "Ragamalika" is a catalogue row of type `ragamalika`; each song's raagas are listed in its notes.
-- The 21 Nov rows (4 songs, Bowli, Bhupalam, Malayamarutham) are owner-reviewed; the Ragamalika placeholder row is not.
+  - Ragamalika (owner's rule, 21 Nov 2026) is a garland of raagas that differs from song to song, so it has no row in `raagas.csv`. It is the one exception to "every song's raaga must be in `raagas.csv`": a song may give its raaga as "Ragamalika" and must list its raagas in its notes. Ragamalika songs are suggested only through their own mood tags; asking about "Ragamalika" explains the term and lists those songs.
+- The 21 Nov rows (4 songs, Bowli, Bhupalam, Malayamarutham) are owner-reviewed.
 - Known data gaps (song-level mood tags): only Neelambari has a song tagged for sleep; only Kapi and Kanada songs are tagged romantic/nostalgic; only 2 Kannada songs. There is no "evening" mood key; time of day lives on raagas.
 
 ## 6. Quality gates

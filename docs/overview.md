@@ -20,7 +20,7 @@ ManoRaga is a Carnatic music companion. It explains the music in plain words, su
 | Curates in the background | Once a week, a curator agent finds where the catalogue is thin (moods, languages, raagas), researches songs to fill the gaps and leaves checked suggestions for the owner to review. |
 | Stays in its lane | Declines anything outside Carnatic music in a sentence or two. People in distress get care first. |
 
-**Today:** 41 raagas, 72 krithis, 18 composers, 4 languages (Telugu, Sanskrit, Tamil, Kannada) and 12 moods. Every entry cites its sources, and 70 of the 72 krithis are owner-reviewed.
+**Today:** 40 raagas, 73 krithis, 18 composers, 4 languages (Telugu, Sanskrit, Tamil, Kannada) and 12 moods. Every entry cites its sources, and every row is owner-reviewed.
 
 **Two ways to use it:**
 1. The **chat page**, published into your own Claude account. It runs on your Claude subscription and needs no API key. See [SETUP_IN_CLAUDE.md](../SETUP_IN_CLAUDE.md).

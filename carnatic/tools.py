@@ -23,7 +23,7 @@ def source_links(query: str) -> list[dict]:
         {"site": "Wikipedia", "url": f"https://en.wikipedia.org/w/index.php?search={q}"},
     ]
 
-from .catalog import Catalog
+from .catalog import RAGAMALIKA, RAGAMALIKA_NOTE, Catalog, is_ragamalika
 from .profile import ALLOWED_PREFS, ProfileStore
 from .proposals import ProposalStore
 
@@ -176,6 +176,9 @@ class Toolbox:
     # ---- implementations ----------------------------------------------
     def _t_lookup_raaga(self, name: str):
         r = self.cat.resolve_raaga(name)
+        if not r and is_ragamalika(name):
+            return {"found": False, "ragamalika": True, "message": RAGAMALIKA_NOTE,
+                    "krithis_in_catalogue": [k.title for k in self.cat.krithis_for(raaga=RAGAMALIKA)]}
         if not r:
             return {"found": False, "message": f"'{name}' is not in the catalogue."}
         d = r.to_dict()
@@ -260,6 +263,7 @@ class Toolbox:
         liked_k = {x.lower() for x in prof["likes"]["krithi"]}
         langs = {x.lower() for x in as_list(prof["preferences"].get("languages"))}
         R = {name: eff("raaga", name, r.moods, r.avoid_moods) for name, r in self.cat.raagas.items()}
+        R[RAGAMALIKA] = ([], [])        # not a raaga: its songs qualify it, and it has no tags of its own
         K = {k.title: eff("krithi", k.title, k.moods, k.avoid_moods) for k in self.cat.krithis}
 
         # Score raagas: primary mood tag scores highest, then secondary, then the rest.
@@ -297,6 +301,7 @@ class Toolbox:
                 scores[r] -= 5; reasons[r].append("you disliked this raaga (deprioritised)")
 
         order = {name: i for i, name in enumerate(self.cat.raagas)}
+        order[RAGAMALIKA] = len(order)
         ranked = sorted(scores, key=lambda r: (-scores[r], order[r]))  # ties: catalogue order (same as the page)
         out = []
         for r in ranked:
@@ -329,7 +334,7 @@ class Toolbox:
             out.append({
                 "raaga": r,
                 "why": reasons[r],
-                "raaga_notes": self.cat.raagas[r].notes,
+                "raaga_notes": self.cat.raagas[r].notes if r in self.cat.raagas else RAGAMALIKA_NOTE,
                 "krithis": [{"title": k.title, "composer": k.composer or "unknown", "language": k.language,
                              "character": k.descriptors} for _, k in ks[:2]],
             })

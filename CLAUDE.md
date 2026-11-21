@@ -20,6 +20,8 @@ Out of scope for v1: audio raaga identification (planned v2 as a separate servic
   for disputed points and concert practice), Wikipedia (credible for raaga background and composers; song-level facts defer to
   Karnatik.com/Shivkumar.org). Sangeethapriya.org is an audio archive: good for listening links, not
   for text verification. When sources disagree, keep the reviewer's value and record the other view in `notes`.
+- Ragamalika (owner's rule): not a raaga, so no row in raagas.csv; the one exception to "a krithi's raaga must be in
+  raagas.csv". Songs use raaga "Ragamalika" with their raagas in notes (catalog.RAGAMALIKA / is_ragamalika; page mirror).
 - `alternate_parents` records genuine disagreements between schools. Present the primary parent and mention the
   alternate rather than picking a side.
 - `carnatic/catalog.py` — loads + validates CSVs, fuzzy name matching (raaga spellings vary a lot).

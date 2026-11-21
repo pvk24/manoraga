@@ -55,8 +55,8 @@ they look up the curated catalogue in `data/` and rank by your taste profile. Fa
 from the model's memory. See `CLAUDE.md` for architecture and conventions.
 
 ## Data status
-Catalogue: 41 raagas, 70 krithis (all with tala and mood tags), 12 moods. All rows expert-reviewed
-(`verified=true`) except the Ragamalika placeholder row. Everything else is still a draft. Mood tags are ordered primary-first;
+Catalogue: 40 raagas, 73 krithis (all with tala and mood tags), 12 moods. All rows expert-reviewed
+(`verified=true`). Ragamalika songs name "Ragamalika" as their raaga (it has no row: it's a garland of raagas). Mood tags are ordered primary-first;
 `avoid_moods` lists moods a raaga must never be recommended for.
 
 Krithis carry their own ordered mood tags and `descriptors` (the reviewer's words, verbatim), because a song can
