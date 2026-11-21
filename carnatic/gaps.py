@@ -21,7 +21,7 @@ CONFIG = Path(__file__).resolve().parent.parent / "curator" / "config.json"
 
 def load_config(path: Path = CONFIG) -> dict:
     cfg = {"songs_per_mood": 6, "songs_per_language": 8, "songs_per_raaga": 2, "max_suggestions_per_run": 10,
-           "max_gaps_per_run": 3, "skip_raagas": [], "catalogue_targets": {"raagas": 150, "krithis": 1000},
+           "max_gaps_per_run": 3, "skip_raagas": [], "catalogue_targets": {"raagas": 400, "krithis": 1000},
            "run_mix": {"gaps": 4, "new_krithis": 4, "new_raagas": 2}}
     if Path(path).exists():
         cfg.update({k: v for k, v in json.loads(Path(path).read_text(encoding="utf-8")).items() if not k.startswith("_")})

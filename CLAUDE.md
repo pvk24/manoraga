@@ -93,7 +93,7 @@ Out of scope for v1: audio raaga identification (planned v2 as a separate servic
 - Mood → raaga mappings are traditional associations, not universal truths; keep that framing in answers.
 
 ## Next steps
-1. Grow the catalogue (target 150 raagas / 1,000 krithis) from reliable sources; add `source_url` column.
+1. Grow the catalogue (target 400 raagas / 1,000 krithis) from reliable sources; add `source_url` column.
 2. Get a knowledgeable musician to review rows and flip `verified`.
 3. Add listen links (YouTube/Spotify search URLs) to recommendations.
 4. Web UI (Streamlit or FastAPI + simple frontend) with thumbs up/down that calls record_feedback directly.
