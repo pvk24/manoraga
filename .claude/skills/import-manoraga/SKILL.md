@@ -15,7 +15,7 @@ Brings what the owner accepted or added in the chat page's Review panel into `da
 3. **Import:** `python scripts/import_box.py /tmp/imp/box.json /tmp/imp/decisions.json`. It runs the page's own export code and imports the result. Read every result line; an error means the entry didn't apply (report it, don't force it).
 4. **Mark them exported:** for every id in `exported_ids`, set `"exported": true` in `curation/decisions` with db_write (`set` the whole document, `ifVersion` from step 2; re-read and retry if the version changed). Then the Review panel stops offering them for export.
 5. **Ship it** (skip if nothing changed in `data/`):
-   - `python scripts/build_web.py`, then `python -m pytest -q` (must pass).
+   - `python scripts/build_web.py`, then `python -m pytest -q`. It must pass before you commit: check its exit code (don't pipe it into `tail` without `set -o pipefail`). If `test_eval_cases` fails, an imported song was an eval's example of a missing song: swap that eval to another song that's genuinely missing (verified on a trusted site) and update `absent_from_catalogue`.
    - Commit with message "Import suggestion box: <names>" and push to main.
    - Republish the page: `get_artifact` for its version, then `publish_files` with `index.html` = `web/index.html` and that `base_version`.
 6. **Report** in a few lines: what joined the catalogue (title, raaga, moods), what is queued, anything that failed and why.

@@ -84,3 +84,4 @@ This file is the main, readable copy of the rules. When a rule changes, update i
 - `python -m evals.run_evals` (42 live evals) after any prompt or tool change. Compare per-category pass rates with the previous run in `evals/results/`.
 - Manual test plan: the "ManoRaga manual test plan" sheet (41 tests, page version).
 - Never weaken an eval to make it pass; fix the agent or the data.
+- Evals about songs missing from the catalogue name the song in `absent_from_catalogue`; `tests/test_eval_cases.py` fails when an import adds it, so the case gets a new missing song instead of going stale.
