@@ -1,6 +1,6 @@
 ---
-name: import-manoraga
-description: Import the ManoRaga suggestion box into the repo's catalogue. Use when the user says "import the ManoRaga suggestion box", "import my ManoRaga suggestions", or clicks this skill.
+name: import-suggestion-box
+description: Repo copy of the steps to import the ManoRaga suggestion box into the catalogue. The owner's own /import-manoraga account skill follows these steps; use this one only when that skill isn't available.
 ---
 
 # Import the ManoRaga suggestion box
