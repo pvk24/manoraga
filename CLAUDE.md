@@ -25,7 +25,7 @@ Out of scope for v1: audio raaga identification (planned v2 as a separate servic
 - `carnatic/tools.py` — tool schemas + deterministic implementations. LLM interprets; tools retrieve and rank.
 - `carnatic/agent.py` — tool-use loop over the Anthropic Messages API; system prompt rebuilt every round
   with the current profile.
-- `evals/` — 38 live evals: tool, keyword, citation, saved-profile and LLM-rubric checks (multi-turn supported). `tests/` — offline unit tests.
+- `evals/` — 40 live evals: tool, keyword, citation, saved-profile and LLM-rubric checks (multi-turn supported). `tests/` — offline unit tests.
 
 ## Rules
 - Catalogue changes (owner's rule): the agent only proposes. Corrections apply to that user at once and are queued;
@@ -44,6 +44,14 @@ Out of scope for v1: audio raaga identification (planned v2 as a separate servic
 - Moods of new songs (owner's rule): the agent infers them from what the trusted page says about the song (meaning,
   theme, rasa, when sung), suggests them with that basis, and the USER validates. propose_addition refuses an inferred
   mood without user_confirmed: true; moods in the user's own words need no confirmation.
+- Updates are not new suggestions: a new song/raaga suggestion with the same title (ignoring "(Raaga)") and a compatible
+  raaga as a PENDING one, or a correction of the same field on the same item, updates that one in place (new non-empty
+  values win, nothing is erased; same id). Python: ProposalStore.propose_addition/_correction + merge_addition; page:
+  mergeIntoBox in the core. tests/test_review_export.py replays a real 21 Nov sequence through both. An update after the
+  curator decided reopens it in the Review panel (an added-to-catalogue one says to remove and re-add).
+- Completeness (owner's rule): the agent searches the trusted sources for every missing field of a new song (raaga,
+  composer, language, tala, form, meaning for the mood) on its own, before showing it; it asks the user only about
+  fields those sources don't state. Page suggest_addition returns `missing` to prompt this.
 - Curation: one queue (proposals.db). The page's owner-only Review panel stores decisions in db `curation/decisions`
   and exports `manoraga-suggestions/1` JSON; carnatic/page_import.py imports it (accepted -> approved, rest queued,
   idempotent by page id). tests/test_review_export.py runs the page's export code against the importer: change both

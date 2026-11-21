@@ -110,6 +110,7 @@ button{cursor:pointer}
 .rf{display:grid;grid-template-columns:110px 1fr;gap:2px 10px;margin:0}.rf dt{color:var(--mute)}.rf dd{margin:0;overflow-wrap:anywhere}
 .rq{margin:0;padding-left:10px;border-left:2px solid var(--line);color:var(--mute);font-style:italic;overflow-wrap:anywhere}
 .rcard a{color:var(--green);overflow-wrap:anywhere}
+.rcard .notice{margin:2px 0}
 .redit{display:grid;grid-template-columns:110px 1fr;gap:6px 10px;align-items:center}
 .redit input[type=text]{border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--bg);min-height:36px}
 .rmoods{display:flex;flex-wrap:wrap;gap:4px 12px;grid-column:1/-1}.rmoods label{display:flex;gap:6px;align-items:center;font-size:13px}
@@ -359,19 +360,68 @@ async function initStore() {
   } catch (e) { clearTimeout(timer); setStatus('Saved for this visit only'); }
 }
 
+/* ---------- updates to a suggestion already in the box (mirror merge_addition / correction merge in carnatic/proposals.py) ---------- */
+const baseTitle = t => String(t || '').replace(/\(.*?\)/g, '').trim();
+const parenOf = t => ((String(t || '').match(/\(([^)]*)\)/) || [])[1] || '').trim();
+const filled = v => !(v === undefined || v === null || (typeof v === 'string' && !v.trim()) || (Array.isArray(v) && !v.length));
+function raagaOfEntry(e) {
+  const rec = e.record || {}, cand = rec.raaga || parenOf(rec.title) || parenOf(e.name);
+  const r = cand ? resolveRaaga(cand) : null; return r ? r.name : String(cand || '').trim().toLowerCase();
+}
+function findPendingTwin(items, e) {
+  // The pending box entry that `e` updates, or null (no match, or ambiguous).
+  if (e.type === 'addition') {
+    const key = e.kind === 'raaga' ? 'name' : 'title', t = norm(baseTitle((e.record || {})[key] || e.name));
+    if (!t) return null;
+    let c = items.filter(x => x.status === 'pending' && x.type === 'addition' && (x.kind === 'raaga') === (e.kind === 'raaga') && norm(baseTitle((x.record || {})[key] || x.name)) === t);
+    if (e.kind !== 'raaga' && c.length) { const mine = raagaOfEntry(e), exact = c.filter(x => mine && raagaOfEntry(x) === mine); c = exact.length ? exact : mine ? c.filter(x => !raagaOfEntry(x)) : c; }
+    return c.length === 1 ? c[0] : null;
+  }
+  const isMoods = (e.remove_moods || []).length || (e.add_moods || []).length;
+  const c = items.filter(x => x.status === 'pending' && x.type === 'correction' && x.item_type === e.item_type && String(x.item_name).toLowerCase() === String(e.item_name).toLowerCase()
+    && (isMoods ? ((x.remove_moods || []).length || (x.add_moods || []).length) : x.field === e.field));
+  return c.length === 1 ? c[0] : null;
+}
+function mergeEntry(old, e, ts) {
+  if (e.type === 'addition') {
+    const key = e.kind === 'raaga' ? 'name' : 'title', rec = {...(old.record || {})};
+    for (const [k, v] of Object.entries(e.record || {})) if (filled(v)) rec[k] = v;
+    if (old.record && old.record[key] && !old.record[key].includes('(') && norm(baseTitle(rec[key])) === norm(baseTitle(old.record[key]))) rec[key] = old.record[key];
+    const moods = rec.moods || [], mev = [];
+    for (const x of [...(old.mood_evidence || []), ...(e.mood_evidence || [])]) if (x && moods.includes(x.mood) && !mev.some(y => y.mood === x.mood && y.quote === x.quote)) mev.push(x);
+    const eo = String(old.evidence || '').trim(), en = String(e.evidence || '').trim();
+    Object.assign(old, {record: rec, moods: [...moods], mood_evidence: mev, sources: [...(old.sources || []), ...(e.sources || []).filter(u => !(old.sources || []).includes(u))],
+      evidence: !en || eo.includes(en) ? eo : !eo ? en : eo + ' | ' + en, details: e.details || old.details || ''});
+  } else if ((e.remove_moods || []).length || (e.add_moods || []).length) {
+    let rem = [...(old.remove_moods || [])], add = [...(old.add_moods || [])];
+    for (const m of e.remove_moods || []) { if (!rem.includes(m)) rem.push(m); add = add.filter(x => x !== m); }
+    for (const m of e.add_moods || []) { if (!add.includes(m)) add.push(m); rem = rem.filter(x => x !== m); }
+    Object.assign(old, {remove_moods: rem, add_moods: add});
+  } else Object.assign(old, {suggested_value: e.suggested_value});
+  if (e.type === 'correction') {
+    old.sources = [...(old.sources || []), ...(e.sources || []).filter(u => !(old.sources || []).includes(u))];
+    if (e.reason && !String(old.reason || '').includes(e.reason)) old.reason = old.reason ? old.reason + ' | ' + e.reason : e.reason;
+  }
+  old.updated_at = ts; old.updates = (old.updates || 0) + 1;
+  return old;
+}
+function mergeIntoBox(items, e, ts) { const twin = findPendingTwin(items, e); return twin ? mergeEntry(twin, e, ts) : null; }
+
 /* ---------- suggestion box: corrections and add-requests for the curator ---------- */
 async function sendToCurator(entry) {
   if (!DB || !UID) return {sent: false, note: 'Not signed in, so this could not be sent to the curator.'};
-  const doc = DB.doc('suggestions/' + UID);
+  const doc = DB.doc('suggestions/' + UID), out = {sent: true};
   const job = boxChain.then(async () => {
     const snap = await doc.get();
     const items = snap.exists ? [...((snap.data() || {}).items || [])] : [];
     const ts = new Date().toISOString();
-    items.push({...entry, id: UID + ':' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), user: UID, ts, status: 'pending'});
+    const merged = mergeIntoBox(items, entry, ts);
+    if (!merged) items.push({...entry, id: UID + ':' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), user: UID, ts, status: 'pending'});
+    out.updated = !!merged;
     await doc.set({items: items.slice(-200)});
   });
   boxChain = job.catch(() => {});
-  try { await job; if (typeof reviewChanged === 'function') reviewChanged(); return {sent: true}; } catch (e) { return {sent: false, note: 'Could not reach the curator box: ' + ((e && e.code) || 'error')}; }
+  try { await job; if (typeof reviewChanged === 'function') reviewChanged(); return out; } catch (e) { return {sent: false, note: 'Could not reach the curator box: ' + ((e && e.code) || 'error')}; }
 }
 
 /* ---------- tools (port of carnatic/tools.py) ---------- */
@@ -500,7 +550,10 @@ const TOOLS = [
      const record = {...(a.record || {})}; if (!record[a.kind === 'raaga' ? 'name' : 'title']) record[a.kind === 'raaga' ? 'name' : 'title'] = a.name;
      if (moods.length) record.moods = moods; else delete record.moods;
      curatorQueue.push({...a, type: 'addition', kind: a.kind === 'raaga' ? 'raaga' : 'krithi', record, sources: src, moods, mood_evidence: ev.filter(e => moods.includes(e.mood))});
-     return {ok: true, verified_sources: src.length, moods_sent: moods, note: 'Sent to the curator, who approves it before it joins the catalogue. It is not in the catalogue yet.' + ((a.sources || []).length > src.length ? ' Links outside the trusted sites were dropped.' : '') + (dropped.length ? ` Moods without a basis or the user's confirmation were left for the curator: ${dropped.join(', ')}.` : '')}; }},
+     const need = a.kind === 'raaga' ? ['name', 'type', 'arohana', 'avarohana', 'parent'] : ['title', 'raaga', 'composer', 'language', 'tala', 'form'];
+     const missing = need.filter(f => !String(record[f] || '').trim()).concat(moods.length ? [] : ['moods']);
+     return {ok: true, verified_sources: src.length, moods_sent: moods, ...(missing.length ? {missing, todo: 'Before replying, search the trusted sites for these (web_search_trusted / web_fetch_trusted) and call suggest_addition again with the complete record; it updates this same suggestion. Ask the user only about what the sites do not state.'} : {}),
+       note: 'Sent to the curator (an earlier suggestion for the same song is updated, not duplicated), who approves it before it joins the catalogue. It is not in the catalogue yet.' + ((a.sources || []).length > src.length ? ' Links outside the trusted sites were dropped.' : '') + (dropped.length ? ` Moods without a basis or the user's confirmation were left for the curator: ${dropped.join(', ')}.` : '')}; }},
   {name: 'record_feedback', description: "Save a like or dislike the user expressed about a raaga, krithi or composer (e.g. 'loved that one', 'Thodi is too heavy for me'). Call whenever taste is expressed.",
    inputSchema: {type: 'object', properties: {item_type: {type: 'string', enum: ['raaga', 'krithi', 'composer']}, item_name: {type: 'string'}, signal: {type: 'integer', enum: [1, -1]}, note: {type: 'string'}}, required: ['item_type', 'item_name', 'signal']},
    execute: ({item_type, item_name, signal, note}) => { record(item_type, item_name, signal, note || ''); return {ok: true}; }},
@@ -545,7 +598,8 @@ ${webLine()}
 
 Corrections and missing songs
 - "That's not upbeat, it's soothing" is a correction about the song, not a dislike: call report_correction with remove_moods (and add_moods if they say what it is). Tell them their own suggestions change now and the curator will update the shared catalogue. Call record_feedback only if they say they don't like it.
-- When the catalogue lacks what they asked for (recommend returns no picks or a note, or a song isn't found): say so plainly and don't stretch other songs to fit. ${webOn() ? 'Search the trusted sites with web_search_trusted. If you find it there, give the facts with the source link, labelled "from <site>, not yet in my catalogue", then infer its mood from what the page says about the song (meaning, theme, rasa, when it is sung) and suggest 1-2 mood keys, labelled as your suggestion with the line it rests on; base it on the song, not only its raaga. Ask the user to confirm or change the moods and whether to send it to the curator. Only when they say yes, call suggest_addition with the facts in record, the source URLs, the exact supporting text, and the confirmed moods with mood_evidence (user_confirmed: true).' : 'Give source_links and call suggest_addition so the curator can verify and add it.'}
+- When the catalogue lacks what they asked for (recommend returns no picks or a note, or a song isn't found): say so plainly and don't stretch other songs to fit. ${webOn() ? 'Search the trusted sites with web_search_trusted. If you find it there, give the facts with the source link, labelled "from <site>, not yet in my catalogue". Complete it yourself, without being asked: a new song needs raaga, composer, language, tala and form, plus its meaning for the mood. Search or read the trusted pages for every missing field BEFORE you show it; never ask the user to let you check online and never send a half-filled suggestion. Ask the user only about a field the trusted sites do not state, saying it is unstated there. Then infer its mood from what the page says about the song (meaning, theme, rasa, when it is sung) and suggest 1-2 mood keys, labelled as your suggestion with the line it rests on; base it on the song, not only its raaga. Show the complete facts and ask once: confirm or change the moods, and send it to the curator? Only when they say yes, call suggest_addition with ALL the facts in record, the source URLs, the exact supporting text, and the confirmed moods with mood_evidence (user_confirmed: true).' : 'Give source_links and call suggest_addition so the curator can verify and add it.'}
+- Updates: if the user corrects or adds to a song or correction you already sent (a mood, the language), call suggest_addition or report_correction again with the FULL corrected facts. It updates the same suggestion; never describe it as a new one.
 - A song found on the web is never a catalogue song: don't recommend it as if it were tagged with a mood. You may mention it as something to explore, clearly labelled.
 
 Recommendations
@@ -767,7 +821,7 @@ function normEntry(it, docId) {
 }
 function merged(it) {
   // The entry with the curator's edits applied, in the export format carnatic/page_import.py reads.
-  const d = REV.dec[it.id] || {}, e = d.edits || {}, out = {id: it.id, user: it.user, type: it.type, status: d.status || 'pending', ts: it.ts, curator_note: d.note || ''};
+  const d = dec(it), e = d.edits || {}, out = {id: it.id, user: it.user, type: it.type, status: d.status || 'pending', ts: it.ts, updated_at: it.updated_at || '', curator_note: d.note || ''};
   if (it.type === 'addition') {
     const record = {...it.record, ...(e.record || {})};
     const moods = e.moods || it.record.moods || [];
@@ -782,9 +836,17 @@ function merged(it) {
   }
   return out;
 }
-const open_ = it => !(REV.dec[it.id] || {}).exported && (REV.dec[it.id] || {}).status !== 'rejected';
+const changedSince = it => { const d = REV.dec[it.id] || {}; return !!(it.updated_at && d.at && it.updated_at > d.at && (d.status || d.exported)); };
+function dec(it) {
+  // The decision as it stands: an update to the suggestion after you decided reopens it for review
+  // (except once it is in the catalogue, where you remove and re-add it to take the update).
+  const d = REV.dec[it.id] || {};
+  if (changedSince(it) && d.status !== 'applied') { const {status, exported, ...rest} = d; return rest; }
+  return d;
+}
+const open_ = it => !dec(it).exported && dec(it).status !== 'rejected';
 function reviewBadge() {
-  const n = REV.items.filter(it => open_(it) && !(REV.dec[it.id] || {}).status).length, b = $('#reviewBtn');
+  const n = REV.items.filter(it => open_(it) && !dec(it).status).length, b = $('#reviewBtn');
   b.hidden = !REV.on; b.innerHTML = 'Review' + (n ? `<span class="rcount" aria-label="${n} waiting">${n}</span>` : '');
 }
 async function loadReview() {
@@ -845,15 +907,16 @@ function renderReview() {
   const el = $('#review'); if (!el || !REV.on) return;
   const list = REV.items.filter(it => REV.showDone || open_(it));
   const notInRepo = Object.values(OVERLAY.states).filter(x => x.state === 'live').length;
-  const acc = REV.items.filter(it => open_(it) && (REV.dec[it.id] || {}).status === 'accepted').length, pend = REV.items.filter(it => open_(it) && !(REV.dec[it.id] || {}).status).length;
+  const acc = REV.items.filter(it => open_(it) && dec(it).status === 'accepted').length, pend = REV.items.filter(it => open_(it) && !dec(it).status).length;
   el.innerHTML = `<div class="thead"><h2>Review suggestions</h2><button class="close" type="button" data-rv="close">Close</button></div>
     <p class="rintro">Songs and corrections people asked to add from this page. Only you see this. Accept, fix or reject each one, then add accepted ones to the catalogue right here. Export them to your repo when you want the CSVs updated too.</p>
     ${REV.err ? `<p class="notice">${esc(REV.err)}</p>` : ''}
     ${REV.loading && !REV.items.length ? '<p class="empty">Loading…</p>' : ''}
     ${!REV.loading && !list.length ? '<p class="empty">Nothing waiting. New suggestions appear here.</p>' : ''}
-    ${list.map(it => { const d = REV.dec[it.id] || {}, st = d.exported ? 'exported' : (d.status || 'pending'), live = OVERLAY.states[it.id], name = it.type === 'addition' ? merged(it).record[it.kind === 'raaga' ? 'name' : 'title'] : it.item_name;
-      return `<article class="rcard" data-status="${st}"><div class="rh"><div><span class="rk">${it.type === 'addition' ? 'New ' + it.kind : 'Correction · ' + esc(it.item_type || '')}</span><br><b>${esc(name || '?')}</b></div><span class="pill ${st === 'applied' ? 'accepted' : st}">${st === 'applied' ? (live && live.state === 'in_repo' ? 'In repo' : live && live.state === 'error' ? 'Not applied' : 'In catalogue') : st[0].toUpperCase() + st.slice(1)}</span></div>
+    ${list.map(it => { const d = dec(it), st = d.exported ? 'exported' : (d.status || 'pending'), live = OVERLAY.states[it.id], upd = changedSince(it), name = it.type === 'addition' ? merged(it).record[it.kind === 'raaga' ? 'name' : 'title'] : it.item_name;
+      return `<article class="rcard" data-status="${st}"><div class="rh"><div><span class="rk">${it.type === 'addition' ? 'New ' + it.kind : 'Correction · ' + esc(it.item_type || '')}${it.updates ? ` · updated ${it.updates === 1 ? 'once' : it.updates + ' times'}` : ''}</span><br><b>${esc(name || '?')}</b></div><span class="pill ${st === 'applied' ? 'accepted' : st}">${st === 'applied' ? (live && live.state === 'in_repo' ? 'In repo' : live && live.state === 'error' ? 'Not applied' : 'In catalogue') : st[0].toUpperCase() + st.slice(1)}</span></div>
         ${live && live.state === 'error' ? `<p class="notice">${esc(live.error)}</p>` : ''}
+        ${upd ? `<p class="notice">${st === 'applied' ? 'Updated after you added it to the catalogue. To take the update: Remove from catalogue, review, then add it again.' : 'Updated since you last decided, so it needs your review again.'}</p>` : ''}
         ${REV.editing === it.id ? editForm(it) : cardBody(it)}
         ${st === 'applied' ? (live && live.state === 'in_repo' ? '' : `<div class="acts"><button class="act" type="button" data-rv="unapply" data-id="${esc(it.id)}">Remove from catalogue</button></div>`) : REV.editing === it.id || d.exported ? '' : `<div class="acts">${st === 'accepted' ? `<button class="act like" aria-pressed="true" type="button" data-rv="apply" data-id="${esc(it.id)}">Add to catalogue</button>` : ''}${st !== 'accepted' ? `<button class="act" type="button" data-rv="accept" data-id="${esc(it.id)}">Accept</button>` : ''}<button class="act" type="button" data-rv="edit" data-id="${esc(it.id)}">Edit</button>${st !== 'rejected' ? `<button class="act" type="button" data-rv="reject" data-id="${esc(it.id)}">Reject</button>` : ''}${st !== 'pending' ? `<button class="act" type="button" data-rv="undo" data-id="${esc(it.id)}">Undo</button>` : ''}</div>`}</article>`; }).join('')}
     <label class="switch"><input type="checkbox" data-rv="done" ${REV.showDone ? 'checked' : ''}> Show rejected and exported</label>
@@ -883,7 +946,7 @@ $('#review').addEventListener('click', e => {
     REV.exportJSON = JSON.stringify({format: 'manoraga-suggestions/1', exported_at: new Date().toISOString(), items: its.map(merged)}, null, 2); renderReview(); }
   else if (a === 'copy') { const t = $('#review textarea'); t.select(); try { navigator.clipboard.writeText(REV.exportJSON).catch(() => document.execCommand('copy')); } catch (x) { document.execCommand('copy'); } b.textContent = 'Copied'; }
   else if (a === 'apply') applyItems([REV.items.find(x => x.id === id)]);
-  else if (a === 'applyall') applyItems(REV.items.filter(x => open_(x) && (REV.dec[x.id] || {}).status === 'accepted'));
+  else if (a === 'applyall') applyItems(REV.items.filter(x => open_(x) && dec(x).status === 'accepted'));
   else if (a === 'unapply') unapply(id);
   else if (a === 'download') { use('downloads').then(d => d ? d.save({filename: 'manoraga-suggestions.json', data: REV.exportJSON}) : null)
       .then(() => {}, err => { if (!(err && /cancel|declin|abort/i.test(String(err.code || err.name || '')))) { REV.err = 'Download didn\'t work (' + ((err && err.code) || 'error') + '). Use Copy instead.'; renderReview(); } }); }

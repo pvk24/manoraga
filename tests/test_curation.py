@@ -98,3 +98,57 @@ def test_import_refuses_unverified_moods(store):
 def test_import_rejects_other_files(store):
     assert "error" in import_export(store, {"items": []})[0]
     json.dumps(export())  # the format is plain JSON
+
+
+SRC_V = "https://www.shivkumar.org/music/varnams/Ninnukori-Vasantha-Varnam.htm"
+SRC_M = "https://www.shivkumar.org/music/varnams/ninnukori.htm"
+
+
+def test_updates_merge_into_the_pending_addition(store):
+    """Regression: each update to a suggested song (mood, then language) became a new proposal, and the last one
+    had lost raaga/composer/tala. Two songs with the same title in different raagas must stay separate."""
+    cat = Catalog.load(store.data_dir)
+    v = {"title": "Ninnu Kori", "raaga": "Vasantha", "composer": "Tacchur Singaraachari", "language": "Telugu",
+         "tala": "Adi", "form": "varnam"}
+    m = {"title": "Ninnukori", "raaga": "Mohanam", "composer": "Ramnad Sreenivasa Iyengar", "language": "Telugu",
+         "tala": "Adi", "form": "varnam"}
+    ev = "Ninnu kori yunnara Ragam : Vasantha Talam : Adi Composer : Tacchur Singaaraachari"
+    a = store.propose_addition("u", cat, "krithi", v, [SRC_V], ev)
+    b = store.propose_addition("u", cat, "krithi", m, [SRC_M], "Ninnukori Ragam : Mohanam Talam : Adi Composer : Ramnad")
+    assert a["proposal_id"] != b["proposal_id"]                        # same title, different raagas
+    mood = {"mood": "romantic_nostalgic", "source": SRC_V, "quote": "I am longing for you. I beseech you to uphold your affection.",
+            "about": "song", "user_confirmed": True}
+    # The update carries only the title (with the raaga in brackets) and the mood: it must not erase anything.
+    u = store.propose_addition("u", cat, "krithi", {"title": "Ninnu Kori (Vasantha)", "moods": ["romantic_nostalgic"]},
+                               [SRC_V], ev, [mood])
+    assert u["updated"] and u["proposal_id"] == a["proposal_id"]
+    assert len(store.list("pending")) == 2
+    rec = store.get(a["proposal_id"])["payload"]["record"]
+    assert rec == {**v, "moods": ["romantic_nostalgic"]}               # clean title kept, nothing lost
+    assert store.get(a["proposal_id"])["payload"]["updates"]
+    # Once decided, a later suggestion of the same song is a new proposal (the catalogue check then applies).
+    store.reject(a["proposal_id"])
+    again = store.propose_addition("u", cat, "krithi", v, [SRC_V], ev)
+    assert again["proposal_id"] not in (a["proposal_id"], b["proposal_id"]) and not again.get("updated")
+
+
+def test_updates_merge_into_the_pending_correction(store):
+    cat = Catalog.load(store.data_dir)
+    one = store.propose_correction("u", cat, "krithi", "Jagadoddharana", "moods", {"remove": ["light_playful"], "add": []}, "not upbeat")
+    two = store.propose_correction("u", cat, "krithi", "Jagadoddharana", "moods", {"remove": [], "add": ["calm_anxious"]}, "it's calming")
+    assert two["updated"] and two["proposal_id"] == one["proposal_id"] and len(store.list("pending")) == 1
+    pay = store.get(one["proposal_id"])["payload"]
+    assert pay["suggested"] == {"remove": ["light_playful"], "add": ["calm_anxious"]}
+    assert "not upbeat" in pay["reason"] and "calming" in pay["reason"]
+
+
+def test_reimport_of_an_updated_page_suggestion_updates_the_queue(store):
+    item = {"id": "p:9", "user": "u", "type": "addition", "kind": "krithi", "status": "pending", "updated_at": "",
+            "record": {"title": "Ninnu Kori", "raaga": "Vasantha", "composer": "Tacchur Singaraachari", "language": "Telugu", "tala": "Adi"},
+            "sources": [SRC_V], "evidence": "Ninnu kori yunnara Ragam : Vasantha Talam : Adi Composer : Tacchur"}
+    assert import_export(store, export(item))[0]["result"] == "queued for review"
+    assert import_export(store, export(item))[0]["result"] == "skipped: already imported"
+    later = {**item, "updated_at": "2026-11-21T12:20:00Z", "record": {**item["record"], "form": "varnam"}}
+    assert import_export(store, export(later))[0]["result"] == "updated the queued proposal"
+    (p,) = store.list("pending")
+    assert p["payload"]["record"]["form"] == "varnam"

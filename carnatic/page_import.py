@@ -16,15 +16,20 @@ from .proposals import ProposalStore
 FORMAT = "manoraga-suggestions/1"
 
 
-def _imported_ids(store: ProposalStore) -> set[str]:
-    return {p["payload"]["origin"]["page_id"] for p in store.list(None)
-            if isinstance(p["payload"].get("origin"), dict) and p["payload"]["origin"].get("page_id")}
+def _imported(store: ProposalStore) -> dict[str, dict]:
+    """page id -> the proposal it became (the latest, if several)."""
+    out = {}
+    for p in store.list(None):
+        o = p["payload"].get("origin")
+        if isinstance(o, dict) and o.get("page_id"):
+            out[o["page_id"]] = p
+    return out
 
 
 def import_export(store: ProposalStore, data: dict) -> list[dict]:
     if data.get("format") != FORMAT:
         return [{"error": f"not a ManoRaga suggestions export (expected format {FORMAT})"}]
-    seen = _imported_ids(store)
+    seen = _imported(store)
     report = []
     for it in data.get("items", []):
         pid_page = str(it.get("id", ""))
@@ -32,12 +37,12 @@ def import_export(store: ProposalStore, data: dict) -> list[dict]:
         row = {"page_id": pid_page, "item": label, "page_status": it.get("status", "pending")}
         if not pid_page:
             report.append({**row, "result": "skipped: no id"}); continue
-        if pid_page in seen:
+        if pid_page in seen and (seen[pid_page]["status"] != "pending" or it.get("updated_at", "") <= seen[pid_page]["payload"]["origin"].get("page_updated_at", "")):
             report.append({**row, "result": "skipped: already imported"}); continue
         if it.get("status") == "rejected":
             report.append({**row, "result": "skipped: rejected in the page"}); continue
         origin = {"page_id": pid_page, "from": "chat page", "page_status": it.get("status", "pending"),
-                  "curator_note": it.get("curator_note", "")}
+                  "curator_note": it.get("curator_note", ""), "page_updated_at": it.get("updated_at", "")}
         cat = Catalog.load(store.data_dir)
         user = "page:" + str(it.get("user", "?"))
         if it.get("type") == "addition":
@@ -65,7 +70,7 @@ def import_export(store: ProposalStore, data: dict) -> list[dict]:
             report.append({**row, "proposal_id": pid,
                            "result": "approved, catalogue updated" if ap.get("ok") else "queued; approval failed: " + ap["error"]})
         else:
-            report.append({**row, "proposal_id": pid, "result": "queued for review"})
+            report.append({**row, "proposal_id": pid, "result": "updated the queued proposal" if res.get("updated") else "queued for review"})
     return report
 
 

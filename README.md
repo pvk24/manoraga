@@ -10,7 +10,7 @@ cp .env.example .env            # add your ANTHROPIC_API_KEY
 pytest -q                       # offline tests, no key needed
 python seed_profile.py --user pranav   # preload your favourite krithis as likes
 python cli.py --user pranav --debug
-python -m evals.run_evals       # 38 live evals (uses API credits); results saved to evals/results/
+python -m evals.run_evals       # 40 live evals (uses API credits); results saved to evals/results/
 python -m evals.run_evals --only ground   # just one category
 ```
 
@@ -74,6 +74,8 @@ The agent can only **propose** catalogue changes; you approve them.
 - **New songs/raagas** (Python agent): found by web search on Karnatik.com / Shivkumar.org / Rasikas.org /
   Sangeethapriya.org, proposed with source URLs and quoted evidence, and queued for you. The agent also infers moods from
   the song's meaning on those pages and suggests them; the user confirms before they're proposed.
+- **Updates, not duplicates:** when a user adds to or corrects a song that's already waiting for review, the same
+  suggestion is updated (and reopened for review if you had decided). The agent looks up missing facts itself.
 - **Review in the terminal:** `python cli.py --curator` then `/proposals`, `/edit <id> field=value ...`
   (e.g. `/edit 3 tala="Misra Chapu" moods="calm_anxious;comfort_when_low" note="per Karnatik.com"`),
   `/approve <id>`, `/reject <id> <reason>`; or the same as `python -m carnatic.review list|show|edit|approve|reject`.

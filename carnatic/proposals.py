@@ -15,7 +15,9 @@ import time
 from pathlib import Path
 from urllib.parse import urlparse
 
-from .catalog import DATA_DIR, Catalog
+import re
+
+from .catalog import DATA_DIR, Catalog, _norm
 
 DEFAULT_DB = Path(__file__).resolve().parent.parent / "proposals.db"
 TRUSTED = ("karnatik.com", "shivkumar.org", "rasikas.org", "sangeethapriya.org")
@@ -33,6 +35,42 @@ def trusted(url: str) -> bool:
     except ValueError:
         return False
     return urlparse(url).scheme == "https" and any(host == d or host.endswith("." + d) for d in TRUSTED)
+
+
+def _base_title(t: str) -> str:
+    return re.sub(r"\(.*?\)", "", str(t or "")).strip()
+
+
+def _paren(t: str) -> str:
+    m = re.search(r"\(([^)]*)\)", str(t or ""))
+    return m.group(1).strip() if m else ""
+
+
+def _filled(v) -> bool:
+    return not (v is None or (isinstance(v, str) and not v.strip()) or (isinstance(v, list) and not v))
+
+
+def merge_addition(old: dict, new: dict) -> dict:
+    """An update to a pending addition: new non-empty values win, nothing is erased, lists are unioned."""
+    rec = dict(old.get("record") or {})
+    for k, v in (new.get("record") or {}).items():
+        if _filled(v):
+            rec[k] = v
+    for key in ("title", "name"):        # keep a clean title if the update only added "(Raaga)"
+        if old.get("record", {}).get(key) and _base_title(rec.get(key)) and \
+                _norm(_base_title(rec.get(key))) == _norm(_base_title(old["record"][key])) and "(" not in old["record"][key]:
+            rec[key] = old["record"][key]
+    srcs = list(old.get("sources") or [])
+    srcs += [u for u in new.get("sources") or [] if u not in srcs]
+    ev_old, ev_new = (old.get("evidence") or "").strip(), (new.get("evidence") or "").strip()
+    evidence = ev_old if not ev_new or ev_new in ev_old else (ev_new if not ev_old else ev_old + " | " + ev_new)
+    moods = rec.get("moods") or []
+    mev = []
+    for e in list(old.get("mood_evidence") or []) + list(new.get("mood_evidence") or []):
+        if isinstance(e, dict) and e.get("mood") in moods and not any(
+                x.get("mood") == e.get("mood") and x.get("quote") == e.get("quote") for x in mev):
+            mev.append(e)
+    return {"record": rec, "sources": srcs, "evidence": evidence, "mood_evidence": mev}
 
 
 class ProposalStore:
@@ -75,6 +113,33 @@ class ProposalStore:
                    "suggested": suggested_value, "reason": reason, "sources": sources or []}
         if origin:
             payload["origin"] = origin
+        # A pending correction of the same field on the same item: update it (latest statement wins).
+        prev = next((p for p in self.list("pending") if p["kind"] == "correction"
+                     and p["payload"]["item_type"] == item_type and p["payload"]["item_name"] == name
+                     and p["payload"]["field"] == field), None)
+        if prev:
+            old = prev["payload"]
+            if field == "moods" and isinstance(old["suggested"], dict) and isinstance(suggested_value, dict):
+                rem, add = list(old["suggested"].get("remove", [])), list(old["suggested"].get("add", []))
+                for m in suggested_value.get("remove", []):
+                    rem = rem + [m] if m not in rem else rem
+                    add = [x for x in add if x != m]
+                for m in suggested_value.get("add", []):
+                    add = add + [m] if m not in add else add
+                    rem = [x for x in rem if x != m]
+                payload["suggested"] = {"remove": rem, "add": add}
+            payload["sources"] = list(old.get("sources") or []) + [u for u in payload["sources"] if u not in (old.get("sources") or [])]
+            if old.get("reason") and reason and reason not in old["reason"]:
+                payload["reason"] = old["reason"] + " | " + reason
+            payload["origin"] = origin or old.get("origin")
+            payload["updates"] = list(old.get("updates") or []) + [{"at": time.time(), "by": user_id}]
+            if old.get("edits"):
+                payload["edits"] = old["edits"]
+            self.conn.execute("UPDATE proposals SET payload = ? WHERE id = ?", (json.dumps(payload), prev["id"]))
+            self.conn.commit()
+            return {"ok": True, "proposal_id": prev["id"], "updated": True,
+                    "status": "pending curator approval (updated the earlier proposal)",
+                    "change": f"{item_type} '{name}': {field} {current!r} -> {payload['suggested']!r}"}
         pid = self._add(user_id, "correction", payload)
         return {"ok": True, "proposal_id": pid, "status": "pending curator approval",
                 "change": f"{item_type} '{name}': {field} {current!r} -> {suggested_value!r}"}
@@ -83,6 +148,13 @@ class ProposalStore:
                          evidence: str, mood_evidence: list | None = None, origin: dict | None = None) -> dict:
         if kind not in ("krithi", "raaga"):
             return {"error": "kind must be krithi or raaga"}
+        # The same song (or raaga) already waiting for review: update that proposal instead of adding a duplicate.
+        update_of = self._pending_addition(cat, kind, record)
+        if update_of:
+            m = merge_addition(update_of["payload"], {"record": record, "sources": sources, "evidence": evidence,
+                                                      "mood_evidence": mood_evidence})
+            record, sources, evidence, mood_evidence = m["record"], m["sources"], m["evidence"], m["mood_evidence"]
+            origin = origin or update_of["payload"].get("origin")
         if not sources or not all(trusted(u) for u in sources):
             return {"error": f"at least one source, all https pages on {', '.join(TRUSTED)}"}
         if len((evidence or "").strip()) < 20:
@@ -145,8 +217,42 @@ class ProposalStore:
         payload = {"record": record, "sources": sources, "evidence": evidence, "mood_evidence": mood_evidence}
         if origin:
             payload["origin"] = origin
+        if update_of:
+            old = update_of["payload"]
+            for k in ("edits",):
+                if old.get(k):
+                    payload[k] = old[k]
+            payload["updates"] = list(old.get("updates") or []) + [{"at": time.time(), "by": user_id}]
+            self.conn.execute("UPDATE proposals SET payload = ? WHERE id = ?", (json.dumps(payload), update_of["id"]))
+            self.conn.commit()
+            return {"ok": True, "proposal_id": update_of["id"], "updated": True,
+                    "status": "pending curator approval (updated the earlier proposal)", "record": record}
         pid = self._add(user_id, f"add_{kind}", payload)
         return {"ok": True, "proposal_id": pid, "status": "pending curator approval", "record": record}
+
+    def _pending_addition(self, cat: Catalog, kind: str, record: dict) -> dict | None:
+        """The pending addition this one updates: same kind and title (ignoring "(Raaga)"), and for a krithi a
+        compatible raaga. None if there is no match, or more than one and the raaga doesn't pick one."""
+        key = "name" if kind == "raaga" else "title"
+        title = _norm(_base_title(record.get(key) or ""))
+        if not title:
+            return None
+
+        def raaga_of(rec):
+            cand = rec.get("raaga") or _paren(rec.get(key))
+            r = cat.resolve_raaga(cand) if cand else None
+            return r.name if r else str(cand or "").strip().lower()
+
+        cands = [p for p in self.list("pending") if p["kind"] == f"add_{kind}"
+                 and _norm(_base_title(p["payload"]["record"].get(key) or "")) == title]
+        if kind == "krithi" and cands:
+            mine = raaga_of(record)
+            exact = [p for p in cands if mine and raaga_of(p["payload"]["record"]) == mine]
+            if exact:
+                cands = exact
+            elif mine:
+                cands = [p for p in cands if not raaga_of(p["payload"]["record"])]
+        return cands[0] if len(cands) == 1 else None
 
     # ---- read -----------------------------------------------------------
     def list(self, status: str | None = "pending") -> list[dict]:

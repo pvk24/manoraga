@@ -98,3 +98,43 @@ def test_page_catalogue_changes_match_python_approval(tmp_path):
         py = next(k for k in cat.krithis if k.title == title)
         js = next(k for k in out["krithis"] if k["title"] == title)
         assert {f: getattr(py, f) for f in fields} == {f: js[f] for f in fields}, title
+
+
+V = "https://www.shivkumar.org/music/varnams/Ninnukori-Vasantha-Varnam.htm"
+M = "https://www.shivkumar.org/music/varnams/ninnukori.htm"
+# What the page actually sent on 21 Nov: each varnam three times (facts; + mood; + "both are in Telugu"),
+# the last time with only title "(Raaga)" + mood. Two different songs share the title.
+SENDS = [
+    {"type": "addition", "kind": "krithi", "name": "Ninnu Kori (Vasantha)", "sources": [V], "evidence": "Ninnu kori yunnara Ragam : Vasantha Talam : Adi",
+     "record": {"title": "Ninnu Kori", "raaga": "Vasantha", "composer": "Tacchur Singaaraachari", "tala": "Adi", "form": "Varnam"}},
+    {"type": "addition", "kind": "krithi", "name": "Ninnukori (Mohanam)", "sources": [M], "evidence": "Ninnukori Ragam : Mohanam Talam : Adi",
+     "record": {"title": "Ninnukori", "raaga": "Mohanam", "composer": "Ramnad Sreenivasa Iyengar", "tala": "Adi", "form": "Varnam"}},
+    {"type": "addition", "kind": "krithi", "name": "Ninnu Kori (Vasantha)", "sources": [V], "evidence": "I am longing for you.",
+     "record": {"title": "Ninnu Kori", "raaga": "Vasantha", "composer": "Tacchur Singaaraachari", "tala": "Adi", "form": "Varnam", "moods": ["romantic_nostalgic"]},
+     "mood_evidence": [{"mood": "romantic_nostalgic", "source": V, "quote": "I am longing for you. I beseech you to uphold your affection for me.", "about": "song", "user_confirmed": True}]},
+    {"type": "addition", "kind": "krithi", "name": "Ninnukori (Mohanam)", "sources": [M], "evidence": "O Srinivasa! I pray to your existence.",
+     "record": {"title": "Ninnukori", "raaga": "Mohanam", "moods": ["devotional_reflective"]},
+     "mood_evidence": [{"mood": "devotional_reflective", "source": M, "quote": "O Srinivasa! I pray to your existence. Kindly show mercy upon me.", "about": "song", "user_confirmed": True}]},
+    {"type": "addition", "kind": "krithi", "name": "Ninnu Kori (Vasantha)", "sources": [V], "evidence": "User: both are in telugu",
+     "record": {"title": "Ninnu Kori (Vasantha)", "language": "Telugu", "moods": ["romantic_nostalgic"]}},
+    {"type": "addition", "kind": "krithi", "name": "Ninnukori (Mohanam)", "sources": [M], "evidence": "User: both are in telugu",
+     "record": {"title": "Ninnukori (Mohanam)", "language": "Telugu", "moods": ["devotional_reflective"]}},
+]
+
+
+def test_updates_merge_in_the_page_box_like_in_python():
+    from carnatic.proposals import merge_addition
+    html = build(write=False)
+    box = json.loads(subprocess.run(["node", str(ROOT / "tests" / "js_box_runner.js")], input=json.dumps(
+        {"html": html, "sends": SENDS}), capture_output=True, text=True, check=True).stdout)
+    assert len(box) == 2
+    v, m = box
+    assert v["record"] == {"title": "Ninnu Kori", "raaga": "Vasantha", "composer": "Tacchur Singaaraachari", "tala": "Adi",
+                           "form": "Varnam", "moods": ["romantic_nostalgic"], "language": "Telugu"}
+    assert m["record"]["raaga"] == "Mohanam" and m["record"]["language"] == "Telugu" and m["record"]["composer"]
+    assert v["updates"] == 2 and m["updates"] == 2 and v["mood_evidence"] and m["mood_evidence"]
+    # Python's merge gives the same record for the same sequence.
+    py = {"record": {}, "sources": [], "evidence": ""}
+    for e in SENDS[0::2]:
+        py = merge_addition(py, e)
+    assert py["record"] == v["record"] and py["mood_evidence"] == v["mood_evidence"] and py["sources"] == v["sources"]
