@@ -242,7 +242,7 @@ function applyChange(it, when) {
   const lc = x => String(x || '').trim().toLowerCase(), stamp = `Added in the ManoRaga page on ${when} (approved by the curator)`;
   if (it.type === 'addition') {
     const rec = it.record || {}, mev = it.mood_evidence || [];
-    const notes = [rec.notes || '', mev.length ? 'Moods from: ' + mev.map(e => `${e.mood} (${moodBasis(e)})`).join('; ') : '', stamp].filter(Boolean).join('; ');
+    const notes = [rec.notes || '', mev.length ? 'Moods from: ' + [...new Set(mev.map(e => `${e.mood} (${moodBasis(e)})`))].join('; ') : '', stamp].filter(Boolean).join('; ');
     const sources = [...it.sources, ...mev.map(e => e.source).filter(u => trustedUrl(u) && !it.sources.includes(u))];
     if (it.kind !== 'raaga') {
       CAT.krithis.push({title: rec.title.trim(), raaga: CAT.raagas.find(r => lc(r.name) === lc(rec.raaga)).name, composer: rec.composer || '', language: rec.language || '', tala: rec.tala || '',

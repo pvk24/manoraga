@@ -358,7 +358,7 @@ class ProposalStore:
     def _write(self, path, fields, rows):
         tmp = path.with_suffix(".tmp")
         with open(tmp, "w", newline="", encoding="utf-8") as f:
-            w = csv.DictWriter(f, fieldnames=fields)
+            w = csv.DictWriter(f, fieldnames=fields, lineterminator="\n")   # match the repo files
             w.writeheader()
             w.writerows(rows)
         shutil.move(tmp, path)
@@ -380,7 +380,8 @@ class ProposalStore:
                 if e["source"] in ("user", "curator"):
                     return e["source"]
                 return "inferred from " + e["source"] + ", user-confirmed" + (", raaga-level" if e.get("about") == "raaga" else "")
-            mood_note = ("Moods from: " + "; ".join(f"{e['mood']} ({basis(e)})" for e in mev)) if mev else ""
+            parts = list(dict.fromkeys(f"{e['mood']} ({basis(e)})" for e in mev))   # one line per mood + basis
+            mood_note = ("Moods from: " + "; ".join(parts)) if parts else ""
             edits = pay.get("edits") or []
             edit_note = ("Curator edited: " + ", ".join(sorted({k for e in edits for k in e["changes"]}))) if edits else ""
             row["notes"] = "; ".join(x for x in (row.get("notes", ""), mood_note, edit_note, stamp) if x)

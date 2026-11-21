@@ -108,9 +108,9 @@ def test_updates_merge_into_the_pending_addition(store):
     """Regression: each update to a suggested song (mood, then language) became a new proposal, and the last one
     had lost raaga/composer/tala. Two songs with the same title in different raagas must stay separate."""
     cat = Catalog.load(store.data_dir)
-    v = {"title": "Ninnu Kori", "raaga": "Vasantha", "composer": "Tacchur Singaraachari", "language": "Telugu",
+    v = {"title": "Zz Test Varnam", "raaga": "Vasantha", "composer": "Tacchur Singaraachari", "language": "Telugu",
          "tala": "Adi", "form": "varnam"}
-    m = {"title": "Ninnukori", "raaga": "Mohanam", "composer": "Ramnad Sreenivasa Iyengar", "language": "Telugu",
+    m = {"title": "Zztestvarnam", "raaga": "Mohanam", "composer": "Ramnad Sreenivasa Iyengar", "language": "Telugu",
          "tala": "Adi", "form": "varnam"}
     ev = "Ninnu kori yunnara Ragam : Vasantha Talam : Adi Composer : Tacchur Singaaraachari"
     a = store.propose_addition("u", cat, "krithi", v, [SRC_V], ev)
@@ -119,7 +119,7 @@ def test_updates_merge_into_the_pending_addition(store):
     mood = {"mood": "romantic_nostalgic", "source": SRC_V, "quote": "I am longing for you. I beseech you to uphold your affection.",
             "about": "song", "user_confirmed": True}
     # The update carries only the title (with the raaga in brackets) and the mood: it must not erase anything.
-    u = store.propose_addition("u", cat, "krithi", {"title": "Ninnu Kori (Vasantha)", "moods": ["romantic_nostalgic"]},
+    u = store.propose_addition("u", cat, "krithi", {"title": "Zz Test Varnam (Vasantha)", "moods": ["romantic_nostalgic"]},
                                [SRC_V], ev, [mood])
     assert u["updated"] and u["proposal_id"] == a["proposal_id"]
     assert len(store.list("pending")) == 2
@@ -144,7 +144,7 @@ def test_updates_merge_into_the_pending_correction(store):
 
 def test_reimport_of_an_updated_page_suggestion_updates_the_queue(store):
     item = {"id": "p:9", "user": "u", "type": "addition", "kind": "krithi", "status": "pending", "updated_at": "",
-            "record": {"title": "Ninnu Kori", "raaga": "Vasantha", "composer": "Tacchur Singaraachari", "language": "Telugu", "tala": "Adi"},
+            "record": {"title": "Zz Test Varnam", "raaga": "Vasantha", "composer": "Tacchur Singaraachari", "language": "Telugu", "tala": "Adi"},
             "sources": [SRC_V], "evidence": "Ninnu kori yunnara Ragam : Vasantha Talam : Adi Composer : Tacchur"}
     assert import_export(store, export(item))[0]["result"] == "queued for review"
     assert import_export(store, export(item))[0]["result"] == "skipped: already imported"
