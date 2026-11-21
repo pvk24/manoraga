@@ -493,7 +493,7 @@ function rankMoods(moods, guard, limit, lang) {
     }
     if (!ks.length) continue;                                  // no fitting song: don't suggest the raaga
     ks.sort((a, b) => b[0] - a[0]);
-    out.push({raaga: r, why: reasons[r], raaga_notes: RA[r] ? RA[r].notes : RAGAMALIKA_NOTE, krithis: ks.slice(0, 2).map(([, k]) => ({title: k.title, composer: k.composer || 'unknown', language: k.language, tala: k.tala, character: k.descriptors}))});
+    out.push({raaga: r, why: reasons[r], raaga_notes: RA[r] ? RA[r].notes : RAGAMALIKA_NOTE, krithis: ks.slice(0, 2).map(([, k]) => ({title: k.title, composer: k.composer || 'unknown', language: k.language, tala: k.tala, character: k.descriptors, listen: listenLinks(k.title, k.raaga, k.composer)}))});
     if (out.length >= limit) break;
   }
   return out;
@@ -511,6 +511,13 @@ function reportCorrection({item_type, item_name, reason, remove_moods, add_moods
   if (Object.keys(out).length === 1) return {error: 'give remove_moods/add_moods, or field + suggested_value'};
   out.note = 'The shared catalogue changes only after the curator approves.';
   return out;
+}
+function listenLinks(title, raaga = '', composer = '') {
+  // Must match listen_links() in carnatic/tools.py (parity test): search links to hear a song, no recording claimed.
+  const words = [title, raaga, composer === 'unknown' ? '' : composer].filter(Boolean).join(' ');
+  const q = encodeURIComponent(String(words).trim()).replace(/[!'()*]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase()).replace(/%20/g, '+');
+  return [{site: 'YouTube', url: `https://www.youtube.com/results?search_query=${q}`}, {site: 'Spotify', url: 'https://open.spotify.com/search/' + q.split('+').join('%20')},
+          {site: 'Sangeethapriya.org', url: `https://www.google.com/search?q=site%3Asangeethapriya.org+${q}`}];
 }
 function sourceLinks(query) {
   // Must match source_links() in carnatic/tools.py (parity test): Python quote_plus encoding.
@@ -536,7 +543,7 @@ const TOOLS = [
   {name: 'search_krithis', description: "Find krithis (songs) in the catalogue by raaga, composer and/or title. Use to answer 'which raaga is song X in', 'songs by Y', 'songs in raaga Z'.",
    inputSchema: {type: 'object', properties: {raaga: {type: 'string'}, composer: {type: 'string'}, title: {type: 'string'}}},
    execute: (a) => { if (!a.raaga && !a.composer && !a.title) return {error: 'provide at least one of raaga, composer, title'};
-     const res = krithisFor(a); const out = res.length ? {found: true, krithis: res.slice(0, 15).map(({moods, avoid_moods, ...k}) => k)} : {found: false, message: 'No matching krithis in the catalogue.'};
+     const res = krithisFor(a); const out = res.length ? {found: true, krithis: res.slice(0, 15).map(({moods, avoid_moods, ...k}) => ({...k, listen: listenLinks(k.title, k.raaga, k.composer)}))} : {found: false, message: 'No matching krithis in the catalogue.'};
      if (a.title) { const sim = similarTitles(a.title, new Set(res.map(k => k.title))); if (sim.length) out.similar_titles = sim; }
      return out; }},
   {name: 'recommend', description: 'Recommend raagas and krithis for one or two moods, personalised to the user\'s taste profile. First interpret what the user said into mood keys (see the mood guide in your instructions).',
@@ -565,6 +572,9 @@ const TOOLS = [
   {name: 'source_links', description: 'Get search links for a raaga, krithi or question on the trusted sources (Karnatik.com, Shivkumar.org, Rasikas.org, Sangeethapriya.org, Wikipedia). Use when you cannot verify a fact, so the user can check it themselves.',
    inputSchema: {type: 'object', properties: {query: {type: 'string'}}, required: ['query']},
    execute: ({query}) => ({query, links: sourceLinks(query || '')})},
+  {name: 'listen_links', description: 'Get links to listen to a song: YouTube, Spotify and Sangeethapriya.org searches for its title, raaga and composer (searches, not a specific recording). Use as soon as the user wants to hear a song, including songs found on the trusted sites that are not in the catalogue. Catalogue songs from recommend/search_krithis already carry these as `listen`.',
+   inputSchema: {type: 'object', properties: {title: {type: 'string'}, raaga: {type: 'string'}, composer: {type: 'string'}}, required: ['title']},
+   execute: ({title, raaga, composer}) => ({title, links: listenLinks(title || '', raaga || '', composer || ''), note: 'Search pages, not a specific recording: say so in one short clause.'})},
   {name: 'set_preference', description: 'Save an explicit user setting. Allowed keys: ' + JSON.stringify(PREFS),
    inputSchema: {type: 'object', properties: {key: {type: 'string', enum: Object.keys(PREFS)}, value: {anyOf: [{type: 'string'}, {type: 'array', items: {type: 'string'}}]}}, required: ['key', 'value']},
    execute: ({key: k, value}) => { if (!(k in PREFS)) return {error: 'unknown preference'}; profile.preferences[k] = value; save(); return {ok: true}; }}
@@ -577,6 +587,7 @@ function summarize(name, out) {
   if (name === 'search_krithis') return out.found ? `${out.krithis.length} match${out.krithis.length > 1 ? 'es' : ''}: ` + out.krithis.slice(0, 3).map(k => `${k.title} (${k.raaga}; ${(k.sources || []).map(dom).join(', ')})`).join(', ') + (out.krithis.length > 3 ? '…' : '') : 'no match in catalogue';
   if (name === 'report_correction') return `noted: ${out.item}` + (out.applied_for_this_user ? ` (your suggestions now skip ${out.applied_for_this_user.remove.join(', ') || 'nothing'}${out.applied_for_this_user.add.length ? '; counts for ' + out.applied_for_this_user.add.join(', ') : ''})` : '') + '; sent to curator';
   if (name === 'suggest_addition') return `sent to curator to verify and add${out.verified_sources ? ` (${out.verified_sources} trusted source${out.verified_sources > 1 ? 's' : ''})` : ''}`;
+  if (name === 'listen_links') return 'listen links (YouTube, Spotify, Sangeethapriya) for ' + out.title;
   if (name === 'source_links') return 'could not verify in catalogue; gave search links for ' + out.links.map(l => l.site).join(', ');
   if (name === 'recommend') return (out.closest_match ? `no song tagged for the mood; closest match ${out.closest_match.used_mood}; ` : '') + (out.recommendations.length ? 'picks: ' + out.recommendations.map(r => `${r.raaga} → ${(r.krithis[0] || {}).title || 'no krithi'}`).join('; ') : 'no picks');
   return 'saved to your taste profile';
@@ -609,6 +620,7 @@ Corrections and missing songs
 
 Recommendations
 - If the user asks for songs in a language, pass it to recommend as language.
+- Listening: you can't play audio, but you can always give links. Whenever you name a song for someone to hear (a pick, an example, a song found on the trusted sites) or they want to hear one ("yes", "play it", "where can I listen"), give its listen links in that same reply: the \`listen\` field of recommend/search_krithis results, or call listen_links (for any song, in the catalogue or not). Say in one short clause they are searches, not a specific recording. Never ask "would you like to listen?" without the links in the same message, and never just describe the song when they asked to hear it.
 - If recommend returns closest_match, no catalogue song has the mood they asked for: say so first ("I don't have a song tagged for X yet; these are the closest, tagged Y"), then the picks. If it returns a note about language, follow it and don't swap in another mood.
 - When the user describes their mood, day or feelings, map it to 1-2 mood keys and call recommend. If it's genuinely unclear whether they want lifting up or to sit with a feeling, ask one short question first.
 - The app shows the recommend results as cards (with listen links and like buttons) under your reply. So write a warm one-line framing, then one short line per pick on why it fits. Don't add links.

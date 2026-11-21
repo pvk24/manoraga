@@ -51,7 +51,7 @@ ManoRaga is a Carnatic music companion. It explains the music in plain words, su
 
 **How it stays correct:**
 - **74 offline tests.** They include 225 identical calls run through both the Python agent and the chat page, which must give identical answers.
-- **41 live evals** of real conversations covering facts, grounding, moods, taste, scope and safety.
+- **42 live evals** of real conversations covering facts, grounding, moods, taste, scope and safety.
 - **The rules,** written in [agent-behaviour-rules.md](agent-behaviour-rules.md).
 
 **Repo map:**

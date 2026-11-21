@@ -33,6 +33,7 @@ This file is the main, readable copy of the rules. When a rule changes, update i
   - sit_with_sadness never falls back to an uplifting mood. Catalogue validation enforces this.
   - Devotional is never the first fallback except for fresh_morning: it holds most of the songs and would take over.
 - A song found on the web is never treated as mood-tagged. It may be mentioned as something to explore, clearly labelled.
+- Listening (owner's rule, 21 Nov 2026): the agent can't play audio but always gives links. Whenever it names a song for someone to hear, or they want to hear one, the same reply has YouTube, Spotify and Sangeethapriya.org search links (`listen` on every song from recommend/search_krithis; `listen_links` for any song, in the catalogue or not), described as searches, not a specific recording. It never offers to listen without the links. Eval: listen-01.
 - Mood associations are traditional, not universal.
 - "Avoid" rules are hard exclusions, e.g. Thodi is never recommended for light/playful.
 - Likes, dislikes and stated preferences are saved quietly and change later suggestions. The latest signal wins.
@@ -79,6 +80,6 @@ This file is the main, readable copy of the rules. When a rule changes, update i
   - a parity test: 225 identical tool calls through the Python and web versions must match exactly (the page's web-search and review code is page-only and sits outside the parity core);
   - contract tests that run the page's review export through the Python importer, check "Add to catalogue" gives the same rows as Python approval, and replay a real duplicate sequence through both merge implementations;
   - checks that the committed `web/index.html` and the setup instructions are current.
-- `python -m evals.run_evals` (41 live evals) after any prompt or tool change. Compare per-category pass rates with the previous run in `evals/results/`.
+- `python -m evals.run_evals` (42 live evals) after any prompt or tool change. Compare per-category pass rates with the previous run in `evals/results/`.
 - Manual test plan: the "ManoRaga manual test plan" sheet (41 tests, page version).
 - Never weaken an eval to make it pass; fix the agent or the data.

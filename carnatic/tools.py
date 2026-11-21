@@ -11,6 +11,21 @@ from urllib.parse import quote_plus
 TRUSTED_SOURCES = ["karnatik.com", "shivkumar.org", "rasikas.org", "sangeethapriya.org", "wikipedia.org"]
 
 
+def listen_links(title: str, raaga: str = "", composer: str = "") -> list[dict]:
+    """Search links to hear a song (no specific recording is claimed). Must match listenLinks() in web/template.html."""
+    words = " ".join(x for x in (title, raaga, "" if composer in ("", "unknown") else composer) if x)
+    q = quote_plus(words.strip())
+    return [
+        {"site": "YouTube", "url": f"https://www.youtube.com/results?search_query={q}"},
+        {"site": "Spotify", "url": "https://open.spotify.com/search/" + q.replace("+", "%20")},
+        {"site": "Sangeethapriya.org", "url": f"https://www.google.com/search?q=site%3Asangeethapriya.org+{q}"},
+    ]
+
+
+def _with_listen(k: dict) -> dict:
+    return {**k, "listen": listen_links(k["title"], k.get("raaga", ""), k.get("composer", ""))}
+
+
 def source_links(query: str) -> list[dict]:
     """Search links on the trusted sources. Must match sourceLinks() in web/template.html (parity test)."""
     q = quote_plus(query.strip())
@@ -152,6 +167,13 @@ class Toolbox:
                 "input_schema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
             },
             {
+                "name": "listen_links",
+                "description": "Get links to listen to a song: YouTube, Spotify and Sangeethapriya.org searches for its title, raaga and composer (searches, not a specific recording). Use as soon as the user wants to hear a song, including songs found on the trusted sites that are not in the catalogue. Catalogue songs from recommend/search_krithis already carry these as `listen`.",
+                "input_schema": {"type": "object", "properties": {
+                    "title": {"type": "string"}, "raaga": {"type": "string"}, "composer": {"type": "string"}},
+                    "required": ["title"]},
+            },
+            {
                 "name": "set_preference",
                 "description": "Save an explicit user setting. Allowed keys: " + json.dumps(ALLOWED_PREFS),
                 "input_schema": {
@@ -189,7 +211,7 @@ class Toolbox:
         if not any([raaga, composer, title]):
             return {"error": "provide at least one of raaga, composer, title"}
         res = self.cat.krithis_for(raaga=raaga, composer=composer, title=title)
-        out = {"found": True, "krithis": [k.to_dict() for k in res[:15]]} if res else \
+        out = {"found": True, "krithis": [_with_listen(k.to_dict()) for k in res[:15]]} if res else \
               {"found": False, "message": "No matching krithis in the catalogue."}
         if title:
             sim = self.cat.similar_titles(title, exclude={k.title for k in res})
@@ -336,7 +358,8 @@ class Toolbox:
                 "why": reasons[r],
                 "raaga_notes": self.cat.raagas[r].notes if r in self.cat.raagas else RAGAMALIKA_NOTE,
                 "krithis": [{"title": k.title, "composer": k.composer or "unknown", "language": k.language,
-                             "character": k.descriptors} for _, k in ks[:2]],
+                             "character": k.descriptors, "listen": listen_links(k.title, k.raaga, k.composer)}
+                            for _, k in ks[:2]],
             })
             if len(out) >= limit:
                 break
@@ -389,6 +412,10 @@ class Toolbox:
 
     def _t_source_links(self, query: str):
         return {"query": query, "links": source_links(query)}
+
+    def _t_listen_links(self, title: str, raaga: str = "", composer: str = ""):
+        return {"title": title, "links": listen_links(title, raaga or "", composer or ""),
+                "note": "Search pages, not a specific recording: say so in one short clause."}
 
     def _t_set_preference(self, key: str, value):
         return self.profiles.set_preference(self.user_id, key, value)

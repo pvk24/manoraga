@@ -80,6 +80,9 @@ def cases():
         out.append({"label": f"correction {args['item_name']}", "tool": "report_correction", "args": args})
     for q in ["Bhajare re manasa", "Thodi ata tala varnam", "Who is Venkatamakhin?", "Raghuvamsa (sudha)!*'"]:
         out.append({"label": f"links {q}", "tool": "source_links", "args": {"query": q}})
+    for args in [{"title": "Nidhi Chala Sukhama", "raaga": "Kalyani", "composer": "Tyagaraja"}, {"title": "Laali Laaliyani"},
+                 {"title": "Raghuvamsa (sudha)!*'", "raaga": "Kadanakuthuhalam", "composer": "unknown"}]:
+        out.append({"label": f"listen {args['title']}", "tool": "listen_links", "args": args})
     # Closest-mood fallback: every mood has songs now, so empty one for this user with a personal note.
     no_sleep = [("report_correction", {"item_type": "krithi", "item_name": "Uyyala Loogavayya", "remove_moods": ["wind_down_sleep"], "reason": "not sleepy for me"})]
     for lang in (None, "Telugu", "Kannada", "Tamil", "Sanskrit"):

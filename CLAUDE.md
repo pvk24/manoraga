@@ -29,7 +29,7 @@ Out of scope for v1: audio raaga identification (planned v2 as a separate servic
 - `carnatic/tools.py` — tool schemas + deterministic implementations. LLM interprets; tools retrieve and rank.
 - `carnatic/agent.py` — tool-use loop over the Anthropic Messages API; system prompt rebuilt every round
   with the current profile.
-- `evals/` — 41 live evals: tool, keyword, citation, saved-profile and LLM-rubric checks (multi-turn supported). `tests/` — offline unit tests.
+- `evals/` — 42 live evals: tool, keyword, citation, saved-profile and LLM-rubric checks (multi-turn supported). `tests/` — offline unit tests.
 
 ## Rules
 - `docs/agent-behaviour-rules.md` is the readable record of the owner's rules. Any change to a rule updates it in the
@@ -77,7 +77,7 @@ Out of scope for v1: audio raaga identification (planned v2 as a separate servic
   .claude/skills/install-manoraga). After ANY change to `data/` or `web/template.html`, run `python scripts/build_web.py`
   and commit the result; tests/test_web_build.py fails if it is stale.
 - The web page (`web/template.html`) re-implements the core in JavaScript between `/*@core-begin` and
-  `/*@core-end*/`. `tests/test_parity.py` runs 225 identical tool calls through both and fails on any difference,
+  `/*@core-end*/`. `tests/test_parity.py` runs 230 identical tool calls through both and fails on any difference,
   so change ranking or matching logic in BOTH places. Keep those markers intact.
 - Run `pytest -q` after every change; run `python -m evals.run_evals` after prompt or tool changes and
   report the pass rate per category before/after (compare files in evals/results/). Never weaken a case or a
@@ -98,6 +98,6 @@ Out of scope for v1: audio raaga identification (planned v2 as a separate servic
 ## Next steps
 1. Grow the catalogue (target 400 raagas / 1,000 krithis) from reliable sources; add `source_url` column.
 2. Get a knowledgeable musician to review rows and flip `verified`.
-3. Add listen links (YouTube/Spotify search URLs) to recommendations.
+3. Done 21 Nov: listen links (YouTube/Spotify/Sangeethapriya searches) on every song + listen_links tool. Next: real recording links.
 4. Web UI (Streamlit or FastAPI + simple frontend) with thumbs up/down that calls record_feedback directly.
 5. v2: `identify_raaga_from_swaras` (text, deterministic), then audio identification service.

@@ -283,3 +283,16 @@ def test_ragamalika_is_a_song_raaga_not_a_catalogue_row():
     rec = tb.run("recommend", {"moods": ["fresh_morning"], "limit": 10})
     groups = rec["recommendations"] if isinstance(rec, dict) and "recommendations" in rec else rec
     assert any(g["raaga"] == RAGAMALIKA and g["krithis"][0]["title"] == "Kurai Onrum Illai" for g in groups)
+
+
+def test_listen_links_come_with_every_song(tmp_path):
+    """Owner's request (21 Nov 2026): when a user wants to hear a song, links are given at once."""
+    tb = make(tmp_path)
+    rec = tb.run("recommend", {"moods": ["grand_uplifted"], "limit": 2})["recommendations"]
+    k = rec[0]["krithis"][0]
+    assert [l["site"] for l in k["listen"]] == ["YouTube", "Spotify", "Sangeethapriya.org"]
+    assert "youtube.com/results?search_query=" in k["listen"][0]["url"]
+    found = tb.run("search_krithis", {"title": "Nidhi Chala"})["krithis"][0]
+    assert found["listen"][0]["url"].endswith("Nidhi+Chala+Sukhama+Kalyani+Tyagaraja")
+    out = tb.run("listen_links", {"title": "Laali Laaliyani", "raaga": "Harikambhoji", "composer": "Tyagaraja"})
+    assert out["links"][1]["url"] == "https://open.spotify.com/search/Laali%20Laaliyani%20Harikambhoji%20Tyagaraja"
