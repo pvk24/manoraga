@@ -84,7 +84,8 @@ def cases():
                  {"title": "Raghuvamsa (sudha)!*'", "raaga": "Kadanakuthuhalam", "composer": "unknown"}]:
         out.append({"label": f"listen {args['title']}", "tool": "listen_links", "args": args})
     # Closest-mood fallback: every mood has songs now, so empty one for this user with a personal note.
-    no_sleep = [("report_correction", {"item_type": "krithi", "item_name": "Uyyala Loogavayya", "remove_moods": ["wind_down_sleep"], "reason": "not sleepy for me"})]
+    no_sleep = [("report_correction", {"item_type": "krithi", "item_name": k.title, "remove_moods": ["wind_down_sleep"], "reason": "not sleepy for me"})
+                for k in CAT.krithis if "wind_down_sleep" in k.moods]
     for lang in (None, "Telugu", "Kannada", "Tamil", "Sanskrit"):
         out.append({"label": f"fallback wind_down_sleep {lang}", "setup": no_sleep, "tool": "recommend", "args": {"moods": ["wind_down_sleep"], "language": lang, "limit": 4}})
     out.append({"label": "fallback pair", "setup": no_sleep, "tool": "recommend", "args": {"moods": ["wind_down_sleep", "fresh_morning"], "limit": 3}})

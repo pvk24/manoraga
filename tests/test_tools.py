@@ -161,12 +161,14 @@ def test_closest_mood_fallback(tmp_path):
     cat = tb.cat
     r = tb.run("recommend", {"moods": ["fresh_morning"]})             # owner tagged morning songs: no fallback
     assert "closest_match" not in r and r["recommendations"][0]["krithis"][0]["title"] == "Sriman Narayana"
-    tb.run("report_correction", {"item_type": "krithi", "item_name": "Uyyala Loogavayya", "remove_moods": ["wind_down_sleep"], "reason": "x"})
+    sleepy = [k.title for k in cat.krithis if "wind_down_sleep" in k.moods]
+    for t in sleepy:                                                   # note every sleep song as not sleepy for me
+        tb.run("report_correction", {"item_type": "krithi", "item_name": t, "remove_moods": ["wind_down_sleep"], "reason": "x"})
     r = tb.run("recommend", {"moods": ["wind_down_sleep"]})           # now no song fits sleep for this user
     assert r["closest_match"]["used_mood"] == "calm_anxious" and r["recommendations"]
     for p in r["recommendations"]:
         assert "wind_down_sleep" not in cat.raagas[p["raaga"]].avoid_moods
-        assert all(k["title"] != "Uyyala Loogavayya" for k in p["krithis"])
+        assert all(k["title"] not in sleepy for k in p["krithis"])
     r = tb.run("recommend", {"moods": ["joyful_celebrate"]})
     assert "closest_match" not in r
     r = tb.run("recommend", {"moods": ["sit_with_sadness"], "language": "Kannada"})
