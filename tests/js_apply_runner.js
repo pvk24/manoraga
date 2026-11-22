@@ -10,7 +10,7 @@ process.stdin.on("end", () => {
   const stubs = "const $ = () => null; function renderTaste() {} function refreshCards() {} const use = () => Promise.resolve(null);";
   const code = stubs + "\n" + catLine + "\n" + core + `
     const results = ITEMS.map(it => { const err = checkChange(it); if (!err) applyChange(it, '2026-11-21'); return {error: err}; });
-    RESULT = JSON.stringify({results, krithis: CAT.krithis, raagas: CAT.raagas});`;
+    RESULT = JSON.stringify({results, krithis: CAT.krithis, raagas: CAT.raagas, moods: CAT.moods});`;
   const sb = { ITEMS: items, RESULT: null, Blob, URL, console };
   vm.runInNewContext(code, sb);
   process.stdout.write(sb.RESULT);

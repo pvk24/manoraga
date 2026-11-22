@@ -9,13 +9,12 @@ from __future__ import annotations
 import csv
 import datetime as dt
 import json
+import re
 import shutil
 import sqlite3
 import time
 from pathlib import Path
 from urllib.parse import urlparse
-
-import re
 
 from .catalog import DATA_DIR, RAGAMALIKA, Catalog, _norm, is_ragamalika
 
@@ -27,6 +26,24 @@ RAAGA_FIELDS = {"name", "aliases", "type", "melakarta_number", "parent", "arohan
                 "foreign_notes", "moods", "rasa", "notes"}
 CORRECTABLE = {"krithi": {"raaga", "composer", "language", "tala", "moods"},
                "raaga": {"arohana", "avarohana", "parent", "melakarta_number", "moods"}}
+
+
+MOOD_KEY = re.compile(r"^[a-z][a-z0-9_]{2,40}$")
+
+
+def new_mood_error(n: dict, moods: dict) -> str | None:
+    """A mood the owner creates while reviewing (owner's rule, 22 Nov 2026). Mirror of newMoodError() in
+    web/template.html: a key, a name, when to use it, and 1-2 closest existing moods (its fallback)."""
+    if not isinstance(n, dict) or not MOOD_KEY.match(str(n.get("key", ""))):
+        return "a new mood needs a name of 3+ letters"
+    if n["key"] in moods:
+        return f"a mood called '{n.get('label') or n['key']}' already exists"
+    if not str(n.get("label", "")).strip() or not str(n.get("when_to_use", "")).strip():
+        return f"new mood '{n.get('label') or n['key']}' needs a name and when to suggest it"
+    fb = n.get("fallback") or []
+    if not fb or len(fb) > 2 or any(f not in moods for f in fb):
+        return f"new mood '{n.get('label') or n['key']}' needs 1-2 closest existing moods"
+    return None
 
 
 def trusted(url: str) -> bool:
@@ -145,7 +162,10 @@ class ProposalStore:
                 "change": f"{item_type} '{name}': {field} {current!r} -> {suggested_value!r}"}
 
     def propose_addition(self, user_id: str, cat: Catalog, kind: str, record: dict, sources: list[str],
-                         evidence: str, mood_evidence: list | None = None, origin: dict | None = None) -> dict:
+                         evidence: str, mood_evidence: list | None = None, origin: dict | None = None,
+                         new_moods: list | None = None) -> dict:
+        """new_moods: moods the owner created in the page's Review panel (only page_import passes them; the chat
+        agent can't create moods)."""
         if kind not in ("krithi", "raaga"):
             return {"error": "kind must be krithi or raaga"}
         # The same song (or raaga) already waiting for review: update that proposal instead of adding a duplicate.
@@ -187,10 +207,16 @@ class ProposalStore:
                 return {"error": f"missing {missing}; use the source's values, never guess"}
             if cat.resolve_raaga(record["name"]) and cat.resolve_raaga(record["name"]).name.lower() == record["name"].lower():
                 return {"error": f"raaga '{record['name']}' is already in the catalogue"}
+        new_moods = [dict(n) for n in new_moods or []]
+        for n in new_moods:
+            err = new_mood_error(n, cat.moods)
+            if err:
+                return {"error": err}
+        known = set(cat.moods) | {n["key"] for n in new_moods}
         for f in ("moods",):
             if f in record:
                 vals = record[f] if isinstance(record[f], list) else [x for x in str(record[f]).split(";") if x]
-                bad = [m for m in vals if m not in cat.moods]
+                bad = [m for m in vals if m not in known]
                 if bad:
                     return {"error": f"unknown mood keys {bad}"}
                 record[f] = vals
@@ -220,6 +246,8 @@ class ProposalStore:
         if extra_ev:
             return {"error": f"mood evidence given for moods not in the record: {sorted({e.get('mood') for e in extra_ev})}"}
         payload = {"record": record, "sources": sources, "evidence": evidence, "mood_evidence": mood_evidence}
+        if new_moods:
+            payload["new_moods"] = [n for n in new_moods if n["key"] in (record.get("moods") or [])]
         if origin:
             payload["origin"] = origin
         if update_of:
@@ -340,7 +368,7 @@ class ProposalStore:
         p = self.get(pid)
         if not p or p["status"] != "pending":
             return {"error": f"proposal {pid} is not pending"}
-        backup = {f: (self.data_dir / f).read_text(encoding="utf-8") for f in ("raagas.csv", "krithis.csv")}
+        backup = {f: (self.data_dir / f).read_text(encoding="utf-8") for f in ("raagas.csv", "krithis.csv", "moods.csv")}
         try:
             self._apply(p, verified)
             Catalog.load(self.data_dir)          # full validation; raises on any inconsistency
@@ -375,6 +403,15 @@ class ProposalStore:
         pay = p["payload"]
         stamp = f"Added via ManoRaga proposal #{p['id']} on {today} (sources checked by the agent; approved by curator)"
         if p["kind"] in ("add_krithi", "add_raaga"):
+            new = pay.get("new_moods") or []
+            if new:   # moods the owner created while reviewing: add them before the row that uses them
+                mpath, mrows, mfields = self._rows("moods.csv")
+                have = {r["mood_key"] for r in mrows}
+                for n in new:
+                    if n["key"] not in have:
+                        mrows.append({"mood_key": n["key"], "label": n["label"].strip(), "when_to_use": n["when_to_use"].strip(),
+                                      "fallback": ";".join(n["fallback"])})
+                self._write(mpath, mfields, mrows)
             fname = "krithis.csv" if p["kind"] == "add_krithi" else "raagas.csv"
             path, rows, fields = self._rows(fname)
             rec = dict(pay["record"])

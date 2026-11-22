@@ -66,6 +66,8 @@ Out of scope for v1: audio raaga identification (planned v2 as a separate servic
   and exports `manoraga-suggestions/1` JSON; carnatic/page_import.py imports it (accepted -> approved, rest queued,
   idempotent by page id). tests/test_review_export.py runs the page's export code against the importer: change both
   together. `ProposalStore.edit` corrects a pending proposal; curator-set moods carry source "curator".
+  The owner can create a mood in the Review panel's edit form (entry.new_moods: key, label, when_to_use, fallback);
+  propose_addition(new_moods=) validates it (new_mood_error mirrors newMoodError) and _apply writes moods.csv first.
 - The page's "Add to catalogue" stores approved changes in db `catalog/overlay` (everyone reads, admin writes) and
   applies them on load over the built-in catalogue (checkChange/applyChange in the page core mirror
   ProposalStore validation and _apply; tests/test_review_export.py checks they give the same rows). Changes the repo

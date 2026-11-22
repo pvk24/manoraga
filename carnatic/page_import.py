@@ -48,7 +48,8 @@ def import_export(store: ProposalStore, data: dict) -> list[dict]:
         if it.get("type") == "addition":
             mev = [dict(e) for e in it.get("mood_evidence") or []]
             res = store.propose_addition(user, cat, it.get("kind", "krithi"), dict(it.get("record") or {}),
-                                         list(it.get("sources") or []), it.get("evidence", ""), mev, origin)
+                                         list(it.get("sources") or []), it.get("evidence", ""), mev, origin,
+                                         new_moods=it.get("new_moods"))
         elif it.get("type") == "correction":
             if it.get("remove_moods") or it.get("add_moods"):
                 res = store.propose_correction(user, cat, it.get("item_type", "krithi"), it.get("item_name", ""), "moods",

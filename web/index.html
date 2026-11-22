@@ -113,7 +113,7 @@ button{cursor:pointer}
 .rcard .notice{margin:2px 0}
 .redit{display:grid;grid-template-columns:110px 1fr;gap:6px 10px;align-items:center}
 .redit input[type=text]{border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--bg);min-height:36px}
-.rmoods{display:flex;flex-wrap:wrap;gap:4px 12px;grid-column:1/-1}.rmoods label{display:flex;gap:6px;align-items:center;font-size:13px}
+.rmoods{display:flex;flex-wrap:wrap;gap:4px 12px;grid-column:1/-1}.newmood{display:grid;gap:6px;grid-column:1/-1}.newmood label{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px}.rmoods label{display:flex;gap:6px;align-items:center;font-size:13px}
 .rexport textarea{width:100%;min-height:160px;font:12px/1.4 ui-monospace,Menlo,monospace;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--bg)}
 .rcount{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:999px;background:var(--gold);color:#2a1a10;font-size:13px;font-weight:600;margin-left:6px;padding:0 6px}
 @media(prefers-reduced-motion:reduce){.review{transition:none}}
@@ -176,7 +176,7 @@ function reindex() {
   for (const r of CAT.raagas) { IDX[norm(r.name)] = r.name; for (const a of r.aliases) { const k = norm(a.replace(/\(.*?\)/g, '')); if (k && !(k in IDX)) IDX[k] = r.name; } }
 }
 reindex();
-const BASE = JSON.parse(JSON.stringify({raagas: CAT.raagas, krithis: CAT.krithis}));   // the catalogue as built from the repo
+const BASE = JSON.parse(JSON.stringify({raagas: CAT.raagas, krithis: CAT.krithis, moods: CAT.moods}));   // the catalogue as built from the repo
 const resolveRaaga = n => { const k = norm(n); if (IDX[k]) return RA[IDX[k]]; let best = null, bs = 0; for (const key in IDX) { const s = ratio(k, key); if (s > bs) { bs = s; best = key; } } return bs >= 0.8 ? RA[IDX[best]] : null; };
 function similarTitles(title, exclude) {
   // Must match Catalog.similar_titles in carnatic/catalog.py (parity test).
@@ -209,6 +209,7 @@ function checkChange(it) {
     const rec = it.record || {}, kr = it.kind !== 'raaga';
     const need = kr ? ['title', 'raaga', 'composer', 'language'] : ['name', 'type', 'arohana', 'avarohana'];
     const missing = need.filter(f => !String(rec[f] || '').trim()); if (missing.length) return 'missing ' + missing.join(', ');
+    for (const n of it.new_moods || []) { const e = newMoodError(n, MOODS); if (e) return e; }
     if (!(it.sources || []).length || !it.sources.every(trustedUrl)) return 'needs at least one source, all on ' + TRUSTED_SITES.join(', ');
     if (String(it.evidence || '').trim().length < 20) return 'needs evidence quoted from the source';
     if (kr && CAT.krithis.some(k => lc(k.title) === lc(rec.title))) return `'${rec.title}' is already in the catalogue`;
@@ -217,7 +218,7 @@ function checkChange(it) {
     const raaga = kr ? (isRagamalika(rec.raaga) ? {name: RAGAMALIKA, avoid_moods: []} : CAT.raagas.find(r => lc(r.name) === lc(rec.raaga))) : null;
     if (kr && !raaga) return `raaga '${rec.raaga}' is not in the catalogue: add the raaga first`;
     for (const m of rec.moods || []) {
-      if (!MOODS[m]) return 'unknown mood ' + m;
+      if (!MOODS[m] && !(it.new_moods || []).some(n => n.key === m)) return 'unknown mood ' + m;
       const ev = (it.mood_evidence || []).filter(e => e.mood === m);
       if (!ev.length) return `mood '${m}' has no basis`;
       for (const e of ev) {
@@ -244,6 +245,8 @@ function applyChange(it, when) {
   // Mutates CAT like ProposalStore._apply writes the CSVs. Call checkChange first.
   const lc = x => String(x || '').trim().toLowerCase(), stamp = `Added in the ManoRaga page on ${when} (approved by the curator)`;
   if (it.type === 'addition') {
+    for (const n of it.new_moods || []) if (!MOODS[n.key]) MOODS[n.key] = {label: n.label.trim(), when: n.when_to_use.trim(), fallback: [...n.fallback]};
+    syncMoodKeys();
     const rec = it.record || {}, mev = it.mood_evidence || [];
     const notes = [rec.notes || '', mev.length ? 'Moods from: ' + [...new Set(mev.map(e => `${e.mood} (${moodBasis(e)})`))].join('; ') : '', stamp].filter(Boolean).join('; ');
     const sources = [...it.sources, ...mev.map(e => e.source).filter(u => trustedUrl(u) && !it.sources.includes(u))];
@@ -285,7 +288,8 @@ function inBase(it) {
 }
 function rebuildCatalog(changes) {
   // Repo catalogue + the page's approved changes, in order. Changes the repo already has are skipped.
-  const fresh = JSON.parse(JSON.stringify(BASE)); CAT.raagas.length = 0; CAT.raagas.push(...fresh.raagas); CAT.krithis.length = 0; CAT.krithis.push(...fresh.krithis); reindex();
+  const fresh = JSON.parse(JSON.stringify(BASE)); CAT.raagas.length = 0; CAT.raagas.push(...fresh.raagas); CAT.krithis.length = 0; CAT.krithis.push(...fresh.krithis);
+  for (const k of Object.keys(CAT.moods)) if (!fresh.moods[k]) delete CAT.moods[k]; syncMoodKeys(); reindex();
   const out = [];
   for (const c of changes || []) {
     if (inBase(c.entry)) { out.push({id: c.id, state: 'in_repo'}); continue; }
@@ -429,6 +433,17 @@ async function sendToCurator(entry) {
 
 /* ---------- tools (port of carnatic/tools.py) ---------- */
 const MOODS = CAT.moods;
+const MOOD_KEYS = Object.keys(MOODS);   // shared by the tool schemas; kept in step when the owner adds a mood
+function syncMoodKeys() { MOOD_KEYS.length = 0; MOOD_KEYS.push(...Object.keys(MOODS)); }
+// A mood the owner creates while reviewing (owner's rule, 22 Nov 2026). Mirror of new_mood_error in carnatic/proposals.py.
+const moodKey = label => String(label || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+function newMoodError(n, moods) {
+  if (!n || !/^[a-z][a-z0-9_]{2,40}$/.test(n.key || '')) return 'a new mood needs a name of 3+ letters';
+  if (moods[n.key]) return `a mood called '${n.label || n.key}' already exists`;
+  if (!String(n.label || '').trim() || !String(n.when_to_use || '').trim()) return `new mood '${n.label || n.key}' needs a name and when to suggest it`;
+  const fb = n.fallback || []; if (!fb.length || fb.length > 2 || fb.some(f => !moods[f])) return `new mood '${n.label || n.key}' needs 1-2 closest existing moods`;
+  return null;
+}
 const PREFS = {level: 'beginner | intermediate | advanced', languages: "list, e.g. ['Tamil','Telugu']", favourite_composers: 'list of composers', favourite_artists: 'list of performers', interests: 'list of topics to learn'};
 let trace = [], picks = null, picksLabel = null, curatorQueue = [];
 function recommend(moods, limit = 3, language = null) {
@@ -546,15 +561,15 @@ const TOOLS = [
      if (a.title) { const sim = similarTitles(a.title, new Set(res.map(k => k.title))); if (sim.length) out.similar_titles = sim; }
      return out; }},
   {name: 'recommend', description: 'Recommend raagas and krithis for one or two moods, personalised to the user\'s taste profile. First interpret what the user said into mood keys (see the mood guide in your instructions).',
-   inputSchema: {type: 'object', properties: {moods: {type: 'array', items: {type: 'string', enum: Object.keys(MOODS)}, description: 'One or two mood keys'}, limit: {type: 'integer', description: '1-4, default 3'}, language: {type: 'string', description: 'Only songs in this language, when the user asks for one (e.g. Kannada)'}}, required: ['moods']},
+   inputSchema: {type: 'object', properties: {moods: {type: 'array', items: {type: 'string', enum: MOOD_KEYS}, description: 'One or two mood keys'}, limit: {type: 'integer', description: '1-4, default 3'}, language: {type: 'string', description: 'Only songs in this language, when the user asks for one (e.g. Kannada)'}}, required: ['moods']},
    execute: ({moods, limit, language}) => { const r = recommend(moods, limit || 3, language); if (r.recommendations) { picks = r.recommendations; picksLabel = r.closest_match ? `Closest match: tagged ${r.closest_match.label.toLowerCase()}` : null; } return r; }},
   {name: 'report_correction', description: "The user says a catalogue song or raaga is described wrongly, e.g. 'that's not upbeat, it's soothing' or 'that krithi is in Misra Chapu, not Adi'. This is NOT a dislike. Mood corrections apply to this user's suggestions at once; every correction goes to the curator, who updates the shared catalogue. Never say the catalogue is already changed.",
-   inputSchema: {type: 'object', properties: {item_type: {type: 'string', enum: ['krithi', 'raaga']}, item_name: {type: 'string'}, remove_moods: {type: 'array', items: {type: 'string', enum: Object.keys(MOODS)}}, add_moods: {type: 'array', items: {type: 'string', enum: Object.keys(MOODS)}}, field: {type: 'string', enum: ['raaga', 'composer', 'language', 'tala', 'arohana', 'avarohana', 'parent', 'melakarta_number']}, suggested_value: {type: 'string'}, reason: {type: 'string', description: "The user's words"}, sources: {type: 'array', items: {type: 'string'}}}, required: ['item_type', 'item_name', 'reason']},
+   inputSchema: {type: 'object', properties: {item_type: {type: 'string', enum: ['krithi', 'raaga']}, item_name: {type: 'string'}, remove_moods: {type: 'array', items: {type: 'string', enum: MOOD_KEYS}}, add_moods: {type: 'array', items: {type: 'string', enum: MOOD_KEYS}}, field: {type: 'string', enum: ['raaga', 'composer', 'language', 'tala', 'arohana', 'avarohana', 'parent', 'melakarta_number']}, suggested_value: {type: 'string'}, reason: {type: 'string', description: "The user's words"}, sources: {type: 'array', items: {type: 'string'}}}, required: ['item_type', 'item_name', 'reason']},
    execute: (a) => { const out = reportCorrection(a); if (!out.error) curatorQueue.push({...a, type: 'correction', item_name: out.item}); return out; }},
   {name: 'suggest_addition', description: "Send a song or raaga that isn't in the catalogue to the curator, who approves additions. Only after the user agrees. Pass the facts, trusted source URLs and supporting text. Moods: only ones the user confirmed, each with mood_evidence (the trusted-page text you inferred it from, or the user's words).",
    inputSchema: {type: 'object', properties: {kind: {type: 'string', enum: ['krithi', 'raaga']}, name: {type: 'string'}, details: {type: 'string', description: 'Facts found (raaga, composer, tala, language) or what the user said'}, sources: {type: 'array', items: {type: 'string'}, description: 'Trusted-site URLs the facts came from'}, evidence: {type: 'string', description: 'Exact text from the source supporting the facts'},
      record: {type: 'object', description: 'The facts as the source states them. krithi: title, raaga, composer, language, tala, form. raaga: name, type, arohana, avarohana, parent, melakarta_number.', properties: Object.fromEntries(['title', 'name', 'raaga', 'composer', 'language', 'tala', 'form', 'type', 'arohana', 'avarohana', 'parent', 'melakarta_number'].map(k => [k, {type: 'string'}]))},
-     moods: {type: 'array', items: {type: 'string', enum: Object.keys(MOODS)}}, mood_evidence: {type: 'array', description: "One per mood. source: trusted URL you inferred it from, or 'user'; quote: that text; about: song or raaga; user_confirmed: true once the user validated it", items: {type: 'object', properties: {mood: {type: 'string'}, source: {type: 'string'}, quote: {type: 'string'}, about: {type: 'string', enum: ['song', 'raaga']}, user_confirmed: {type: 'boolean'}}, required: ['mood', 'source', 'quote']}}}, required: ['kind', 'name']},
+     moods: {type: 'array', items: {type: 'string', enum: MOOD_KEYS}}, mood_evidence: {type: 'array', description: "One per mood. source: trusted URL you inferred it from, or 'user'; quote: that text; about: song or raaga; user_confirmed: true once the user validated it", items: {type: 'object', properties: {mood: {type: 'string'}, source: {type: 'string'}, quote: {type: 'string'}, about: {type: 'string', enum: ['song', 'raaga']}, user_confirmed: {type: 'boolean'}}, required: ['mood', 'source', 'quote']}}}, required: ['kind', 'name']},
    execute: (a) => { const src = (a.sources || []).filter(isTrusted);
      const ev = (a.mood_evidence || []).filter(e => e && (e.source === 'user' ? String(e.quote || '').trim().length >= 3 : isTrusted(e.source) && String(e.quote || '').trim().length >= 20 && e.user_confirmed === true));
      const moods = (a.moods || []).filter(m => MOODS[m] && ev.some(e => e.mood === m)), dropped = (a.moods || []).filter(m => !moods.includes(m));
@@ -847,7 +862,9 @@ function merged(it) {
     if (d.status === 'accepted' || d.status === 'applied') mev = mev.map(x => x.needs_curator_confirmation && !x.user_confirmed ? {...x, user_confirmed: true, confirmed_by: 'curator'} : x);
     for (const m of moods) if (!mev.some(x => x.mood === m)) mev.push({mood: m, source: 'curator', quote: d.note || 'set by the curator'});
     if (moods.length) record.moods = moods; else delete record.moods;
+    const newMoods = (e.new_moods || []).filter(n => moods.includes(n.key));
     Object.assign(out, {kind: it.kind, record, sources: it.sources || [], evidence: it.evidence || '', details: it.details || '', mood_evidence: mev, by: it.by || ''});
+    if (newMoods.length) out.new_moods = newMoods;
   } else {
     Object.assign(out, {item_type: it.item_type, item_name: it.item_name, reason: it.reason || '', sources: it.sources || [],
       remove_moods: e.remove_moods || it.remove_moods || [], add_moods: e.add_moods || it.add_moods || [],
@@ -887,7 +904,7 @@ function saveDecision(id, patch) {
   decChain = decChain.then(() => decRef().set({decisions: JSON.parse(JSON.stringify(REV.dec))}))
     .catch(e => { REV.err = 'Couldn\'t save your decision (' + ((e && e.code) || 'error') + '). It is kept for this visit.'; renderReview(); });
 }
-const moodLbl = m => (MOODS[m] || {label: m}).label;
+const moodLbl = m => (MOODS[m] || REV.items.flatMap(it => (dec(it).edits || {}).new_moods || []).find(n => n.key === m) || {label: m}).label;
 const linkList = us => (us || []).map(u => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(u.replace(/^https:\/\/(www\.)?/, ''))}</a>`).join('<br>');
 function cardBody(it) {
   const m = merged(it), rows = [];
@@ -909,12 +926,17 @@ function cardBody(it) {
   return `<dl class="rf">${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v}</dd>`).join('')}</dl>`;
 }
 function editForm(it) {
-  const m = merged(it), moodBoxes = (name, sel) => `<div class="rmoods">${Object.keys(MOODS).map(k => `<label><input type="checkbox" name="${name}" value="${k}" ${sel.includes(k) ? 'checked' : ''}>${esc(moodLbl(k))}</label>`).join('')}</div>`;
+  const m = merged(it), extra = ((dec(it).edits || {}).new_moods || []).map(n => n.key).filter(k => !MOODS[k]);
+  const moodBoxes = (name, sel) => `<div class="rmoods">${[...Object.keys(MOODS), ...extra].map(k => `<label><input type="checkbox" name="${name}" value="${k}" ${sel.includes(k) ? 'checked' : ''}>${esc(moodLbl(k))}</label>`).join('')}</div>`;
   let f = '';
   if (it.type === 'addition') {
     f = (it.kind === 'raaga' ? RG_FIELDS : KR_FIELDS).map(k => `<label for="re-${k}">${esc(k.replace('_', ' '))}</label><input type="text" id="re-${k}" name="${k}" value="${esc(m.record[k] || '')}"${k === 'raaga' ? ' list="re-raagas"' : ''}>`).join('')
       + `<datalist id="re-raagas">${CAT.raagas.map(r => `<option value="${esc(r.name)}">`).join('')}</datalist>`
-      + `<span>moods</span><span></span>${moodBoxes('moods', m.record.moods || [])}`;
+      + `<span>moods</span><span></span>${moodBoxes('moods', m.record.moods || [])}`
+      + `<span>new mood</span><span></span><div class="newmood"><input type="text" name="nm_label" placeholder="Name, e.g. Festive / celebration of a wedding" aria-label="New mood name">`
+      + `<input type="text" name="nm_when" placeholder="When to suggest it, e.g. weddings, festivals, family gatherings" aria-label="When to use the new mood">`
+      + `<label>Closest existing moods (used when no song has the new one yet) <select name="nm_fb1" aria-label="Closest mood"><option value="">choose</option>${Object.keys(MOODS).map(k => `<option value="${k}">${esc(moodLbl(k))}</option>`).join('')}</select>`
+      + `<select name="nm_fb2" aria-label="Second closest mood (optional)"><option value="">(optional)</option>${Object.keys(MOODS).map(k => `<option value="${k}">${esc(moodLbl(k))}</option>`).join('')}</select></label></div>`;
   } else if (m.field) {
     f = `<label for="re-sv">${esc(m.field)}</label><input type="text" id="re-sv" name="suggested_value" value="${esc(m.suggested_value)}">`;
   } else {
@@ -977,7 +999,16 @@ $('#review').addEventListener('submit', e => {
   e.preventDefault();
   const f = e.target, id = f.dataset.form, it = REV.items.find(x => x.id === id); if (!it) return;
   const fd = new FormData(f), edits = {}, checked = n => fd.getAll(n);
-  if (it.type === 'addition') { edits.record = {}; for (const k of (it.kind === 'raaga' ? RG_FIELDS : KR_FIELDS)) { const v = String(fd.get(k) || '').trim(); if (v !== String(it.record[k] || '')) edits.record[k] = v; } const was = merged(it).record.moods || [], now = checked('moods'); edits.moods = was.filter(m => now.includes(m)).concat(now.filter(m => !was.includes(m))); }   // keep primary-first order
+  if (it.type === 'addition') { edits.record = {}; for (const k of (it.kind === 'raaga' ? RG_FIELDS : KR_FIELDS)) { const v = String(fd.get(k) || '').trim(); if (v !== String(it.record[k] || '')) edits.record[k] = v; } const was = merged(it).record.moods || [], now = checked('moods'); edits.moods = was.filter(m => now.includes(m)).concat(now.filter(m => !was.includes(m)));   // keep primary-first order
+    edits.new_moods = [...((dec(it).edits || {}).new_moods || [])];
+    const label = String(fd.get('nm_label') || '').trim();
+    if (label) {   // the owner creates a mood: name, when to use it, 1-2 closest existing moods
+      const n = {key: moodKey(label), label, when_to_use: String(fd.get('nm_when') || '').trim(), fallback: [...new Set([fd.get('nm_fb1'), fd.get('nm_fb2')].filter(Boolean))]};
+      const err = newMoodError(n, MOODS) || (edits.new_moods.some(x => x.key === n.key) ? `mood '${n.label}' is already added here` : null);
+      if (err) { REV.err = err; renderReview(); return; }
+      edits.new_moods.push(n); if (!edits.moods.includes(n.key)) edits.moods.push(n.key);
+    }
+    edits.new_moods = edits.new_moods.filter(n => edits.moods.includes(n.key)); if (!edits.new_moods.length) delete edits.new_moods; }
   else if (it.field) edits.suggested_value = String(fd.get('suggested_value') || '').trim();
   else { edits.remove_moods = checked('remove_moods'); edits.add_moods = checked('add_moods'); }
   REV.editing = null; saveDecision(id, {edits, note: String(fd.get('note') || '').trim()});

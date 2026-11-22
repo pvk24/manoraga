@@ -194,3 +194,45 @@ def test_only_the_owners_accept_marks_a_row_verified(tmp_path):
         assert store.approve(r["proposal_id"], verified=verified)["ok"]
     got = {k.title: k.verified for k in Catalog.load(tmp_path / "data").krithis if k.title.startswith("Zz")}
     assert got == {"Zz Plain Approve": False, "Zz Owner Accept": True}
+
+
+NEW_MOOD = {"key": "festive_wedding", "label": "Festive / wedding", "when_to_use": "Weddings, festivals, family celebrations",
+            "fallback": ["joyful_celebrate", "grand_uplifted"]}
+
+
+def test_owner_can_create_a_mood_while_reviewing(tmp_path):
+    """Owner's rule (22 Nov 2026): in the Review panel the owner can add a brand-new mood to a suggested song.
+    The page's export carries it, and the page's Add to catalogue and the repo import give the same result."""
+    item = {"id": "u1:nm", "user": "u1", "ts": "2026-11-22T10:00:00Z", "type": "addition", "kind": "krithi",
+            "name": "Zz Wedding Test", "record": {"title": "Zz Wedding Test", "raaga": "Mohanam", "composer": "X",
+                                                   "language": "Tamil", "tala": "Adi"},
+            "sources": [SRC], "evidence": "raagam: mOhanam taaLam: aadi Composer: X Language: Tamil"}
+    dec = {"u1:nm": {"status": "applied", "at": "2026-11-22T10:01:00Z",
+                     "edits": {"moods": ["festive_wedding"], "new_moods": [NEW_MOOD], "record": {}}}}
+    html = build(write=False)
+    exp = json.loads(subprocess.run(["node", str(ROOT / "tests" / "js_review_runner.js")], capture_output=True, text=True,
+                                    input=json.dumps({"html": html, "items": [item], "decisions": dec}), check=True).stdout)
+    entry = exp["items"][0]
+    assert entry["new_moods"] == [NEW_MOOD] and entry["record"]["moods"] == ["festive_wedding"]
+    bad = {**entry, "id": "u1:bad", "record": {**entry["record"], "title": "Zz Bad Mood"},
+           "new_moods": [{**NEW_MOOD, "key": "festive_bad", "fallback": ["no_such_mood"]}],
+           "mood_evidence": [{"mood": "festive_bad", "source": "curator", "quote": "set by the curator"}]}
+    bad["record"]["moods"] = ["festive_bad"]
+    page = json.loads(subprocess.run(["node", str(ROOT / "tests" / "js_apply_runner.js")], capture_output=True, text=True,
+                                     input=json.dumps({"html": html, "items": [entry, bad]}), check=True).stdout)
+    shutil.copytree(DATA_DIR, tmp_path / "data")
+    store = ProposalStore(tmp_path / "p.db", tmp_path / "data")
+    rep = import_export(store, {"format": "manoraga-suggestions/1", "items": [entry, bad]})
+    assert [r["error"] is None for r in page["results"]] == [r["result"].startswith("approved") for r in rep] == [True, False]
+    cat = Catalog.load(tmp_path / "data")
+    mo = cat.moods["festive_wedding"]
+    assert (mo.label, mo.when_to_use, mo.fallback) == (NEW_MOOD["label"], NEW_MOOD["when_to_use"], NEW_MOOD["fallback"])
+    assert page["moods"]["festive_wedding"] == {"label": NEW_MOOD["label"], "when": NEW_MOOD["when_to_use"], "fallback": NEW_MOOD["fallback"]}
+    py = next(k for k in cat.krithis if k.title == "Zz Wedding Test")
+    js = next(k for k in page["krithis"] if k["title"] == "Zz Wedding Test")
+    assert py.moods == js["moods"] == ["festive_wedding"] and py.verified is True
+    # The new mood works for suggestions straight away.
+    from carnatic.profile import ProfileStore
+    from carnatic.tools import Toolbox
+    recs = Toolbox(cat, ProfileStore(tmp_path / "u.db"), "u").run("recommend", {"moods": ["festive_wedding"]})["recommendations"]
+    assert recs[0]["krithis"][0]["title"] == "Zz Wedding Test"
