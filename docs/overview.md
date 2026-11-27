@@ -14,13 +14,13 @@ ManoRaga is a Carnatic music companion. It explains the music in plain words, su
 | It does | In practice |
 |---|---|
 | Answers questions | Raagas, krithis, composers, concepts. It matches your level (beginner to advanced) and uses everyday analogies. |
-| Suggests music for your mood or day | Maps "long day, feeling low" to one of 12 moods, then picks raagas with a song that fits, with a reason for each. It can filter by language. If nothing fits, it offers the closest mood and says so. |
+| Suggests music for your mood or day | Maps "long day, feeling low" to one of 17 moods, then picks raagas with a song that fits, with a reason for each. It can filter by language. If nothing fits, it offers the closest mood and says so. |
 | Learns your taste | Remembers likes, dislikes, languages, favourite composers and your own notes ("that song isn't upbeat for me"). Later suggestions change accordingly. |
 | Grows its catalogue with you | Finds missing songs on trusted sites and fills in every detail. It suggests a mood from the song's meaning, which you confirm. The owner approves before anything is added. |
 | Curates in the background | Once a week, a curator agent finds where the catalogue is thin (moods, languages, raagas), researches songs to fill the gaps and leaves checked suggestions for the owner to review. |
 | Stays in its lane | Declines anything outside Carnatic music in a sentence or two. People in distress get care first. |
 
-**Today:** 40 raagas, 73 krithis, 18 composers, 4 languages (Telugu, Sanskrit, Tamil, Kannada) and 12 moods. Every entry cites its sources, and every row is owner-reviewed.
+**Today:** 42 raagas, 82 krithis, 21 composers, 4 languages (Telugu, Sanskrit, Tamil, Kannada) and 17 moods. Every entry cites its sources, and every row is owner-reviewed.
 
 **Two ways to use it:**
 1. The **chat page**, published into your own Claude account. It runs on your Claude subscription and needs no API key. See [SETUP_IN_CLAUDE.md](../SETUP_IN_CLAUDE.md).
